@@ -1,0 +1,7 @@
+# Eclipse
+.cproject
+.project
+.settings/
+Debug/
+Release/
+build/
