@@ -12,6 +12,7 @@
 #include "helpers/ParseEndpoint.hpp"
 #include "helpers/hexprinter.hpp"
 #include "helpers/frame.hpp"
+#include "helpers/thread.hpp"
 #include "helpers/debug.hpp"
 
 #include <stdexcept>
@@ -92,6 +93,7 @@ void P_relay_unix_to_tcp(
         int tcp_fd
 )
 {
+    GHelpers::Thread::set_self_name("cl:dbus->tcp");
     GHelpers::WriteBuffer wbuf;
 
     static const size_t buf_capacity = 256;
@@ -118,6 +120,8 @@ void P_relay_tcp_to_unix(
         int tcp_fd
 )
 {
+    GHelpers::Thread::set_self_name("cl:tcp->dbus");
+
     uint32_t len_be = 0;
     std::vector<uint8_t> payload;
 
@@ -165,6 +169,7 @@ void run(const Config::Storage& cfg)
         }
         else
         {
+            GHelpers::Thread::set_self_name("cl:manager");
             DEBUG_PRINT("Client: manager started");
             close(dbus_listen_fd);
             try

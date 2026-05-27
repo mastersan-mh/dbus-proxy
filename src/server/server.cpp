@@ -11,6 +11,7 @@
 #include "helpers/ParseEndpoint.hpp"
 #include "helpers/frame.hpp"
 #include "helpers/hexprinter.hpp"
+#include "helpers/thread.hpp"
 #include "helpers/debug.hpp"
 #include "utils/io.hpp"
 
@@ -90,6 +91,7 @@ void P_relay_tcp_to_unix(
         int unix_fd
 )
 {
+    GHelpers::Thread::set_self_name("sv:tcp->dbus");
     uint32_t len_be = 0;
     std::vector<uint8_t> payload;
     while(Utils::io::read_exact(tcp_fd, len_be))
@@ -127,6 +129,7 @@ void P_relay_unix_to_tcp(
         int tcp_fd
 )
 {
+    GHelpers::Thread::set_self_name("sv:dbus->tcp");
     uint8_t tmp[4096];
     GHelpers::WriteBuffer wbuf;
 
@@ -166,6 +169,7 @@ void run(const Config::Storage& cfg)
         else
         {
             close(listen_fd);
+            GHelpers::Thread::set_self_name("sv:manager");
             try
             {
                 const int dbus_fd = unix_connect(cfg.dbus_socket);

@@ -43,8 +43,12 @@ target_compile_options(dbus-proxy PRIVATE
     $<$<CONFIG:release>:-O2 -DNDEBUG>
 )
 
-# Заглушка для будущих зависимостей
-target_link_libraries(dbus-proxy PRIVATE)
+target_compile_definitions(dbus-proxy PRIVATE _GNU_SOURCE)
+
+find_package(Threads REQUIRED)
+target_link_libraries(dbus-proxy PRIVATE
+    Threads::Threads
+)
 
 # Установка в системные пути
 include(GNUInstallDirs)
