@@ -30,7 +30,7 @@ namespace EventFlag
 /** @brief Event flags */
 enum Flags
 {
-    ET = EPOLLET,
+    ET = EPOLLET, /**< Edge-triggered */
     ONESHOT = EPOLLONESHOT,
     WAKEUP = EPOLLWAKEUP,
     EXCLUSIVE = EPOLLEXCLUSIVE,

@@ -8,11 +8,17 @@
 #pragma once
 
 #include "helpers/WriteBuffer.hpp"
+#include "common/ChanId.hpp"
+#include "frame/Header.hpp"
 #include "utils/class.hpp"
 
 #include <cstdint>
 #include <cstddef>
 #include <cstring>
+
+#include <stdexcept>
+#include <set>
+#include <map>
 #include <endian.h>
 
 namespace App
@@ -25,39 +31,55 @@ class Unpacker
 public:
     CLASS_NO_COPY(Unpacker);
     CLASS_NO_MOVE(Unpacker);
-    Unpacker() = default;
+    Unpacker() = delete;
+
+    Unpacker(const std::set<Common::Types::ChanId>& channels);
 
     /** @brief Append raw bytes */
     void push(const void* data, size_t size);
 
     /** @brief Is it empty? */
-    bool empty() const noexcept
-    { return m_out_buf.empty(); }
+    bool empty(Common::Types::ChanId channel_id) const noexcept
+    { return P_output(channel_id).empty(); }
 
-    /** @brief Получить ссылку на выходной буфер (содержит пейлоады без 4-байтовых заголовков) */
-    GHelpers::WriteBuffer& output() noexcept
-    { return m_out_buf; }
+    /** @brief Get output buffer for channel with raw DBUS stream */
+    GHelpers::WriteBuffer& output(Common::Types::ChanId channel_id) noexcept
+    { return P_output(channel_id); }
 
-    const GHelpers::WriteBuffer& output() const noexcept
-    { return m_out_buf; }
-
-    /** @brief Full state reset */
-    void reset() noexcept
-    {
-        m_in_buf.clear();
-        m_out_buf.clear();
-        m_header_parsed = false;
-        m_payload_remaining = 0;
-    }
+    const GHelpers::WriteBuffer& output(Common::Types::ChanId channel_id) const noexcept
+    { return P_output(channel_id); }
 
 private:
-    void process();
 
     GHelpers::WriteBuffer m_in_buf{};
-    GHelpers::WriteBuffer m_out_buf{};
+    std::map<Common::Types::ChanId, GHelpers::WriteBuffer> m_out_buf{}; /**< Output buffers for channels */
     bool m_header_parsed = false;
     size_t m_payload_remaining = 0;
+
+    void P_process();
+
+    GHelpers::WriteBuffer& P_output(Common::Types::ChanId channel_id)
+    {
+        auto it = m_out_buf.find(channel_id);
+        if(it == m_out_buf.end())
+        {
+            throw std::runtime_error("Requested invalid channel");
+        }
+        return it->second;
+    }
+
+    const GHelpers::WriteBuffer& P_output(Common::Types::ChanId channel_id) const
+    {
+        auto it = m_out_buf.find(channel_id);
+        if(it == m_out_buf.end())
+        {
+            throw std::runtime_error("Requested invalid channel");
+        }
+        return it->second;
+    }
+
 };
 
-} /* namespace Frame */
+} /* namespace GHelpers */
 } /* namespace App */
+

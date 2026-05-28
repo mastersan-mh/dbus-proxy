@@ -12,33 +12,42 @@ namespace App
 namespace Frame
 {
 
+Unpacker::Unpacker(const std::set<Common::Types::ChanId>& channels)
+{
+    for(const auto chan_id : channels)
+    {
+        m_out_buf[chan_id] = {};
+    }
+}
+
 void Unpacker::push(const void* data, size_t size)
 {
     if (size == 0) return;
     m_in_buf.push(data, size);
-    process();
+    P_process();
 }
 
-void Unpacker::process()
+void Unpacker::P_process()
 {
+    Header header;
+    static const size_t header_size = sizeof(Header);
+
     while(!m_in_buf.empty())
     {
         if(!m_header_parsed)
         {
-            // --- Фаза 1: Парсинг заголовка (<4: len>) ---
-            if (m_in_buf.size() < 4)
+            if (m_in_buf.size() < header_size)
             {
-                return; // Ждём, пока накопится хотя бы 4 байта на заголовок
+                return;
             }
 
-            uint32_t len_be = 0;
-            std::memcpy(&len_be, m_in_buf.data(), 4);
-            m_payload_remaining = be32toh(len_be);
+            std::memcpy(&header, m_in_buf.data(), header_size);
+            m_payload_remaining = be32toh(header.payload_size);
 
-            m_in_buf.strip_begin(4); // Заголовок съеден, дальше идёт пейлоад
+            m_in_buf.strip_begin(header_size);
             m_header_parsed = true;
 
-            // Если len == 0, фрейм пустой — сразу переходим к следующему заголовку
+            /* If len == 0, frame is empty */
             if (m_payload_remaining == 0)
             {
                 m_header_parsed = false;
@@ -46,23 +55,24 @@ void Unpacker::process()
             }
         }
 
-        // --- Фаза 2: Потоковая пересылка пейлоада ---
-        // Копируем ВСЁ, что есть в m_in_buf, но не больше, чем осталось от текущего фрейма
         const size_t to_copy = std::min(m_in_buf.size(), m_payload_remaining);
 
-        m_out_buf.push(m_in_buf.data(), to_copy); // Пересылаем в выходной буфер
-        m_in_buf.strip_begin(to_copy);            // Удаляем из входного
-        m_payload_remaining -= to_copy;           // Уменьшаем счётчик
+        const auto ch_it = m_out_buf.find(header.channel);
+        if(ch_it != m_out_buf.end())
+        {
+            /* store only for existing channels */
+            ch_it->second.push(m_in_buf.data(), to_copy);
+        }
+        m_in_buf.strip_begin(to_copy);
+        m_payload_remaining -= to_copy;
 
-        // Если текущий фрейм полностью переслан — сбрасываем флаг и ищем следующий заголовок
         if (m_payload_remaining == 0)
         {
+            /* Current frame was totally sended */
             m_header_parsed = false;
-            // Цикл продолжится: если в m_in_buf ещё есть данные, они пойдут на парсинг следующего <len>
         }
         else
         {
-            // Пейлоад ещё не закончился, но m_in_buf опустел → ждём следующего push()
             break;
         }
     }

@@ -4,5 +4,8 @@ sudo ./build/dbus-proxy \
     --mode server \
     --addr 0.0.0.0 \
     --port 5555 \
-    --dbus-socket /run/dbus/system_bus_socket \
+    --dbus-socket \
+"\
+0:/run/dbus/system_bus_socket;\
+" \
     $*

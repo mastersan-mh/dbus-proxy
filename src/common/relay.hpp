@@ -3,15 +3,20 @@
 #define SRC_COMMON_RELAY_HPP_
 
 #include "config_commandline/Storage.hpp"
+#include "common/ChanId.hpp"
+
+#include <map>
 
 namespace App
 {
 namespace Common
 {
 
+using DbusFd = int;
+
 void relay(
         const Config::Storage& cfg,
-        int dbus_fd,
+        const std::map<DbusFd, Common::Types::ChanId>& channels_conf,
         int tcp_fd
 );
 
