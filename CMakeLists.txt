@@ -16,7 +16,7 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 # Собирает все .cpp из src/ (автоматически подхватит новые файлы)
-file(GLOB SOURCES "src/*.cpp" "src/*/*.cpp")
+file(GLOB SOURCES "src/*.cpp" "src/*/*.cpp" "src/*/*/*.cpp")
 add_executable(dbus-proxy ${SOURCES})
 
 target_include_directories(dbus-proxy PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

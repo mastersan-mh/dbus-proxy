@@ -8,6 +8,10 @@
 #ifndef SRC_HELPERS_WRITEBUFFER_HPP_
 #define SRC_HELPERS_WRITEBUFFER_HPP_
 
+#include <algorithm>
+#include <cstring>
+#include <type_traits>
+
 #include <string>
 #include <vector>
 #include <stddef.h>
@@ -22,48 +26,68 @@ class WriteBuffer final
 {
 public:
     WriteBuffer() = default;
-    WriteBuffer(size_t reserve)
-    {
-        m_data.reserve(reserve);
-    }
+
+    explicit WriteBuffer(size_t reserve)
+    { m_data.reserve(reserve); }
 
     ~WriteBuffer() = default;
 
-    const void * data() const noexcept
-    { return reinterpret_cast<const void*>(m_data.data()); }
+    bool empty() const noexcept
+    { return m_read_ofs >= m_data.size(); }
 
     size_t size() const noexcept
-    { return m_data.size(); }
+    { return (m_data.size() - m_read_ofs); }
 
-    void clear()
-    { m_data.clear(); }
+    /**
+     * @brief Beginning of the data
+     */
+    const void* data() const noexcept
+    { return static_cast<const void*>(m_data.data() + m_read_ofs); }
 
-    void push(const void * data, size_t size)
+    /**
+     * @brief Pointer to the beginning of write area
+     */
+    void* write_ptr() noexcept
+    { return static_cast<void*>(m_data.data() + m_data.size()); }
+
+    /**
+     * @brief How many we can write without reallocation
+     */
+    size_t writable_capacity() const noexcept
+    { return m_data.capacity() - m_data.size(); }
+
+    void clear() noexcept
     {
-        const uint8_t * ptr = reinterpret_cast<const uint8_t*>(data);
-        m_data.insert(m_data.end(), ptr, ptr + size);
+        m_data.clear();
+        m_read_ofs = 0;
     }
+
+    /**
+     * @brief Remove n bytes from the beginning.
+     */
+    void strip_begin(size_t n);
+
+    /**
+     * @brief Force compacting
+     */
+    void compact();
+
+    void push(const void* src_data, size_t data_size);
 
     void push(const std::string& str)
-    {
-        push(str.data(), str.size());
-    }
+    { push(str.data(), str.size()); }
 
     template<typename Type>
-    void push(const Type& data)
+    void push(const Type& val)
     {
-        static_assert(
-                std::is_trivially_copyable_v<Type>,
-                "write_exact requires trivially copyable type"
-        );
-
-        return push(reinterpret_cast<const uint8_t*>(&data), sizeof(Type));
+        static_assert(std::is_trivially_copyable_v<Type>, "Type must be trivially copyable");
+        push(static_cast<const void*>(&val), sizeof(Type));
     }
 
 private:
     std::vector<uint8_t> m_data{};
+    size_t m_read_ofs = 0; /**< Offset of logical buffer inside vector */
 };
-
 } /* namespace GHelpers */
 } /* namespace App */
 
