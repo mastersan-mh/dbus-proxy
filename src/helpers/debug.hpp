@@ -31,11 +31,11 @@ void debug_call(
     }
 }
 
-#define DEBUG_CALL(func) \
-        ::App::GHelpers::debug_call(cfg, [&](){ func; } )
+#define DEBUG_CALL(x_cfg, x_func) \
+        ::App::GHelpers::debug_call(x_cfg, [&](){ x_func; } )
 
-#define DEBUG_PRINT(format, ...) do{ \
-        if(cfg.debug){ APPLOG_DEBUG(format, ##__VA_ARGS__); } \
+#define DEBUG_PRINT(x_cfg, x_format, ...) do{ \
+        if(x_cfg.debug){ APPLOG_DEBUG(x_format, ##__VA_ARGS__); } \
 }while(0)
 
 } /* namespace GHelpers */

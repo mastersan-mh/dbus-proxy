@@ -6,27 +6,18 @@
  */
 
 #include "client/client.hpp"
-#include "utils/io.hpp"
+#include "common/relay.hpp"
 #include "logger.hpp"
 #include "config_static/Storage.hpp"
+#include "epoll/Ctrl.hpp"
 #include "helpers/ParseEndpoint.hpp"
-#include "helpers/hexprinter.hpp"
-#include "helpers/frame.hpp"
 #include "helpers/thread.hpp"
 #include "helpers/debug.hpp"
 
 #include <stdexcept>
-#include <vector>
 #include <filesystem>
-
-#include <string.h>
-
-#include <endian.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#include <unistd.h>
 #include <sys/wait.h>
-#include <sys/prctl.h>
 
 namespace App
 {
@@ -83,68 +74,6 @@ int P_unix_listen(const std::filesystem::path& path)
     return fd;
 }
 
-/**
- * @brief Клиент: подмена AUTH + relay
- */
-static
-void P_relay_unix_to_tcp(
-        const Config::Storage& cfg,
-        int dbus_fd,
-        int tcp_fd
-)
-{
-    GHelpers::Thread::set_self_name("cl:dbus->tcp");
-    GHelpers::WriteBuffer wbuf;
-
-    static const size_t buf_capacity = 256;
-    uint8_t buf[buf_capacity];
-
-    while(true)
-    {
-        const ssize_t buf_size = recv(dbus_fd, buf, sizeof(buf), 0);
-        if(buf_size <= 0)
-        {
-            return;
-        }
-
-        DEBUG_CALL(GHelpers::hexprint("DBUS -> TCP: ", buf, buf_size));
-
-        GHelpers::Frame::send(cfg, wbuf, tcp_fd, buf, buf_size);
-    }
-}
-
-static
-void P_relay_tcp_to_unix(
-        const Config::Storage& cfg,
-        int dbus_fd,
-        int tcp_fd
-)
-{
-    GHelpers::Thread::set_self_name("cl:tcp->dbus");
-
-    uint32_t len_be = 0;
-    std::vector<uint8_t> payload;
-
-    while(Utils::io::read_exact(tcp_fd, len_be))
-    {
-        const uint32_t len = be32toh(len_be);
-        if(len > StaticConfig::MAX_FRAME)
-        {
-            break;
-        }
-
-        payload.reserve(len);
-        if(!Utils::io::read_exact(tcp_fd, payload.data(), len))
-        {
-            break;
-        }
-
-        DEBUG_CALL(GHelpers::hexprint("TCP -> DBUS: ", payload.data(), len));
-
-        Utils::io::write_exact(dbus_fd, payload.data(), len);
-    }
-}
-
 void run(const Config::Storage& cfg)
 {
     const int dbus_listen_fd = P_unix_listen(cfg.listen_socket);
@@ -158,7 +87,7 @@ void run(const Config::Storage& cfg)
             continue;
         }
 
-        APPLOG_DEBUG("Client: accepted");
+        APPLOG_DEBUG("accepted");
 
         const pid_t proc_manager = fork();
         if(proc_manager != 0)
@@ -169,50 +98,25 @@ void run(const Config::Storage& cfg)
         }
         else
         {
-            GHelpers::Thread::set_self_name("cl:manager");
-            DEBUG_PRINT("Client: manager started");
+            GHelpers::Thread::set_self_name("cl:instance");
+            DEBUG_PRINT(cfg, "manager started");
             close(dbus_listen_fd);
             try
             {
-                DEBUG_PRINT("Client: connection to %s", cfg.tcp_endpoint.c_str());
+                DEBUG_PRINT(cfg, "connection to %s", cfg.tcp_endpoint.c_str());
                 const int tcp_fd = P_tcp_connect(cfg.tcp_endpoint);
-                DEBUG_PRINT("Client: connected!");
-                const pid_t p1 = fork();
-                if (p1 == 0)
-                {
-                    DEBUG_PRINT("Client: process DBUS->TCP started");
-                    prctl(PR_SET_PDEATHSIG, SIGKILL);
-                    P_relay_unix_to_tcp(cfg, dbus_fd, tcp_fd);
-                    DEBUG_PRINT("Client: process DBUS->TCP stopped");
-                    exit(0);
-                }
-
-                const pid_t p2 = fork();
-                if (p2 == 0)
-                {
-                    DEBUG_PRINT("Client: process TCP->DBUS started");
-                    prctl(PR_SET_PDEATHSIG, SIGKILL);
-                    P_relay_tcp_to_unix(cfg, dbus_fd, tcp_fd);
-                    DEBUG_PRINT("Client: process TCP->DBUS stopped");
-                    exit(0);
-                }
-
-                int status;
-                const pid_t exited_pid = waitpid(-1, &status, 0);
-                if(exited_pid >= 0)
-                {
-                    const pid_t survived = (p1 == exited_pid ? p2 : p1);
-                    kill(survived, SIGTERM);
-                    waitpid(survived, nullptr, 0);
-                }
+                DEBUG_PRINT(cfg, "connected!");
+                Common::relay(cfg, dbus_fd, tcp_fd);
 
                 close(dbus_fd);
+                shutdown(tcp_fd, SHUT_RDWR);
+                close(tcp_fd);
 
-                DEBUG_PRINT("Client: manager stopped");
+                DEBUG_PRINT(cfg, "manager stopped");
             }
             catch (const std::exception& e)
             {
-                APPLOG_ERROR("[Client child error] %s", e.what());
+                APPLOG_ERROR("[Child error] %s", e.what());
             }
             exit(0);
         }
