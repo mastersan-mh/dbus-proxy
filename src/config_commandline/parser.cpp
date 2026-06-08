@@ -6,6 +6,7 @@
  */
 
 #include "config_commandline/parser.hpp"
+#include "utils/string.hpp"
 #include "logger.hpp"
 
 #include <getopt.h>
@@ -23,12 +24,17 @@ void P_print_usage(const char* prog)
             "Options:\n"
             "      --help               Show this help\n"
             "      --mode MODE          'server' or 'client'\n"
-            "      --tcp ADDR           TCP endpoint (host:port)\n"
-            "                           Listened by server.\n"
-            "                           Point to connect for client.\n"
-            "      --dbus-socket PATH   D-Bus socket path (default: /run/dbus/system_bus_socket)\n"
-            "      --listen-socket PATH Local Unix socket to create (client only)\n"
-            "      --spoof-uid UID      UID to spoof in AUTH EXTERNAL (client only)\n"
+            "      --addr ADDR          Address\n"
+            "                           Server: IP address to listen.\n"
+            "                           Client: Point to connect.\n"
+            "      --port PORT          TCP port\n"
+            "                           Server: Listened port.\n"
+            "                           Client: Port to connect to.\n"
+            "                           Default value: 5555.\n"
+            "      --dbus-socket PATH   D-Bus socket path\n"
+            "                           Client: socket to create an listen\n"
+            "                           Server: socket to send stream\n"
+            "                                   (Example: /run/dbus/system_bus_socket)\n"
             ,
             prog
     );
@@ -41,9 +47,9 @@ Storage parse_args(int argc, char* argv[])
         OPTION_VAL__HELP = 1,
         OPTION_VAL__DEBUG,
         OPTION_VAL__MODE,
-        OPTION_VAL__TCP,
+        OPTION_VAL__ADDR,
+        OPTION_VAL__PORT,
         OPTION_VAL__DBUS_SOCKET,
-        OPTION_VAL__LISTEN_SOCKET,
     };
 
     const char * prog = argv[0];
@@ -55,9 +61,9 @@ Storage parse_args(int argc, char* argv[])
             {"help"         , no_argument      , &opt_flag, OPTION_VAL__HELP},
             {"debug"        , no_argument      , &opt_flag, OPTION_VAL__DEBUG},
             {"mode"         , required_argument, &opt_flag, OPTION_VAL__MODE},
-            {"tcp"          , required_argument, &opt_flag, OPTION_VAL__TCP},
+            {"addr"         , required_argument, &opt_flag, OPTION_VAL__ADDR},
+            {"port"         , required_argument, &opt_flag, OPTION_VAL__PORT},
             {"dbus-socket"  , required_argument, &opt_flag, OPTION_VAL__DBUS_SOCKET},
-            {"listen-socket", required_argument, &opt_flag, OPTION_VAL__LISTEN_SOCKET},
             {nullptr, 0, nullptr, 0}
     };
 
@@ -99,19 +105,33 @@ Storage parse_args(int argc, char* argv[])
                         }
                         break;
                     }
-                    case OPTION_VAL__TCP:
+                    case OPTION_VAL__ADDR:
                     {
-                        cfg.tcp_endpoint = optarg;
+                        cfg.addr = optarg;
+                        break;
+                    }
+                    case OPTION_VAL__PORT:
+                    {
+                        try
+                        {
+                            uint64_t port = Utils::String::str_to_u64(optarg);
+                            if(port > 0xffff)
+                            {
+                                throw std::overflow_error("Port value overflow");
+                            }
+                            cfg.port = port;
+                        }
+                        catch(...)
+                        {
+                            APPLOG_ERROR("Invalid port.");
+                            P_print_usage(prog);
+                            exit(1);
+                        }
                         break;
                     }
                     case OPTION_VAL__DBUS_SOCKET:
                     {
                         cfg.dbus_socket = optarg;
-                        break;
-                    }
-                    case OPTION_VAL__LISTEN_SOCKET:
-                    {
-                        cfg.listen_socket = optarg;
                         break;
                     }
                     default:
@@ -136,25 +156,42 @@ Storage parse_args(int argc, char* argv[])
         }
     }
 
-    if(cfg.tcp_endpoint.empty())
+    if(cfg.addr.empty())
     {
-        APPLOG_ERROR("Error: --tcp required.");
+        APPLOG_ERROR("Error: --addr required.");
         P_print_usage(prog);
         exit(1);
     }
 
-    if(cfg.mode == Mode::UNDEFINED)
+    switch(cfg.mode)
     {
-        APPLOG_ERROR("Error: mode must be set.");
-        P_print_usage(prog);
-        exit(1);
-    }
-
-    if(cfg.mode == Mode::CLIENT && cfg.listen_socket.empty())
-    {
-        APPLOG_ERROR("Error: client requires --listen-socket.");
-        P_print_usage(prog);
-        exit(1);
+        case Mode::UNDEFINED:
+        {
+            APPLOG_ERROR("Error: mode must be set.");
+            P_print_usage(prog);
+            exit(1);
+        }
+        case(Mode::CLIENT):
+        {
+            if(cfg.dbus_socket.empty())
+            {
+                APPLOG_ERROR("Error: client requires --dbus-socket.");
+                P_print_usage(prog);
+                exit(1);
+            }
+            break;
+        }
+        case(Mode::SERVER):
+        {
+            if(cfg.dbus_socket.empty())
+            {
+                APPLOG_ERROR("Error: server requires --dbus-socket.");
+                APPLOG_ERROR("Example: /run/dbus/system_bus_socket");
+                P_print_usage(prog);
+                exit(1);
+            }
+            break;
+        }
     }
 
     return cfg;

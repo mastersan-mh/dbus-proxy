@@ -20,9 +20,14 @@ namespace App
 namespace GHelpers
 {
 
-struct sockaddr_in parse_endpoint_inet(const std::string& endpoint);
+struct sockaddr_in build_sockaddr_in(
+        const std::string& addr,
+        uint16_t port
+);
 
-struct sockaddr_un parse_endpoint_unix(const std::filesystem::path& path);
+struct sockaddr_un build_sockaddr_un(
+        const std::filesystem::path& path
+);
 
 } /* namespace GHelpers */
 } /* namespace App */

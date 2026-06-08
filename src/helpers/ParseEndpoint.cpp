@@ -7,6 +7,7 @@
 
 #include "helpers/ParseEndpoint.hpp"
 
+#include <stdexcept>
 #include <arpa/inet.h>
 #include <stdint.h>
 
@@ -15,34 +16,37 @@ namespace App
 namespace GHelpers
 {
 
-struct sockaddr_in parse_endpoint_inet(const std::string& endpoint)
+struct sockaddr_in build_sockaddr_in(
+        const std::string& addr,
+        uint16_t port
+)
 {
-    const size_t sep = endpoint.rfind(':');
-    if (sep == std::string::npos)
-    {
-        throw std::runtime_error("Invalid endpoint (need host:port)");
-    }
+    sockaddr_in addr_in{};
+    addr_in.sin_family = AF_INET;
 
-    const std::string host = endpoint.substr(0, sep);
-    const uint16_t port = std::stoul(endpoint.substr(sep + 1));
+    addr_in.sin_port = htobe16(port);
+    const char *addr_raw = addr.c_str();
+    inet_pton(AF_INET, addr_raw, &addr_in.sin_addr);
 
-    sockaddr_in addr{};
-    addr.sin_family = AF_INET;
-    addr.sin_port = htobe16(port);
-    inet_pton(AF_INET, host.c_str(), &addr.sin_addr);
-
-    return addr;
+    return addr_in;
 }
 
-struct sockaddr_un parse_endpoint_unix(const std::filesystem::path& path)
+struct sockaddr_un build_sockaddr_un(
+        const std::filesystem::path& path
+)
 {
-    struct sockaddr_un addr{};
-    addr.sun_family = AF_UNIX;
+    struct sockaddr_un addr_un{};
+    addr_un.sun_family = AF_UNIX;
 
-    const std::string path_str = path.string().c_str();
-    const char *path_raw = path_str.c_str();
-    strncpy(addr.sun_path, path_raw, sizeof(addr.sun_path) - 1);
-    return addr;
+    static const size_t max_len = sizeof(addr_un.sun_path) - 1;
+    if(path.string().length() > max_len)
+    {
+        throw std::overflow_error("Too long unix socket path");
+    }
+
+    const char *path_raw = path.c_str();
+    strncpy(addr_un.sun_path, path_raw, max_len);
+    return addr_un;
 }
 
 } /* namespace GHelpers */
