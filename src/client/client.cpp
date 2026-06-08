@@ -25,9 +25,9 @@ namespace Client
 {
 
 static
-int P_tcp_connect(const std::string& endpoint)
+int P_tcp_connect(const std::string& endpoint, uint16_t port)
 {
-    const struct sockaddr_in addr = GHelpers::parse_endpoint_inet(endpoint);
+    const struct sockaddr_in addr = GHelpers::build_sockaddr_in(endpoint, port);
 
     const int fd = socket(AF_INET, SOCK_STREAM, 0);
     if(fd < 0)
@@ -46,7 +46,7 @@ int P_tcp_connect(const std::string& endpoint)
 static
 int P_unix_listen(const std::filesystem::path& path)
 {
-    const struct sockaddr_un addr = GHelpers::parse_endpoint_unix(path);
+    const struct sockaddr_un addr = GHelpers::build_sockaddr_un(path);
 
     const int fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd < 0)
@@ -76,8 +76,8 @@ int P_unix_listen(const std::filesystem::path& path)
 
 void run(const Config::Storage& cfg)
 {
-    const int dbus_listen_fd = P_unix_listen(cfg.listen_socket);
-    APPLOG_INFO("[Client] Listening on %s", cfg.listen_socket.c_str());
+    const int dbus_listen_fd = P_unix_listen(cfg.dbus_socket);
+    APPLOG_INFO("[Client] Listening on %s", cfg.dbus_socket.c_str());
 
     while (true)
     {
@@ -87,7 +87,7 @@ void run(const Config::Storage& cfg)
             continue;
         }
 
-        APPLOG_DEBUG("accepted");
+        DEBUG_PRINT(cfg,"accepted");
 
         const pid_t proc_manager = fork();
         if(proc_manager != 0)
@@ -103,8 +103,8 @@ void run(const Config::Storage& cfg)
             close(dbus_listen_fd);
             try
             {
-                DEBUG_PRINT(cfg, "connection to %s", cfg.tcp_endpoint.c_str());
-                const int tcp_fd = P_tcp_connect(cfg.tcp_endpoint);
+                DEBUG_PRINT(cfg, "connection to %s:%" PRIu16, cfg.addr.c_str(), cfg.port);
+                const int tcp_fd = P_tcp_connect(cfg.addr, cfg.port);
                 DEBUG_PRINT(cfg, "connected!");
                 Common::relay(cfg, dbus_fd, tcp_fd);
 

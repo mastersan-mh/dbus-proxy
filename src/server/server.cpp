@@ -25,9 +25,9 @@ namespace Server
 {
 
 static
-int P_tcp_listen(const std::string& endpoint)
+int P_tcp_listen(const std::string& endpoint, uint16_t port)
 {
-    const struct sockaddr_in addr = GHelpers::parse_endpoint_inet(endpoint);
+    const struct sockaddr_in addr = GHelpers::build_sockaddr_in(endpoint, port);
 
     const int fd = socket(AF_INET, SOCK_STREAM, 0);
     if(fd < 0)
@@ -52,7 +52,7 @@ int P_tcp_listen(const std::string& endpoint)
 }
 
 static
-int P_unix_connect(const std::string& path)
+int P_unix_connect(const std::filesystem::path& path)
 {
     const int fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if(fd < 0)
@@ -60,9 +60,7 @@ int P_unix_connect(const std::string& path)
         throw std::runtime_error("socket() failed");
     }
 
-    sockaddr_un addr{};
-    addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, path.c_str(), sizeof(addr.sun_path) - 1);
+    const struct sockaddr_un addr = GHelpers::build_sockaddr_un(path);
 
     if(connect(fd, (sockaddr*)&addr, sizeof(addr)) < 0)
     {
@@ -74,8 +72,8 @@ int P_unix_connect(const std::string& path)
 
 void run(const Config::Storage& cfg)
 {
-    const int listen_fd = P_tcp_listen(cfg.tcp_endpoint);
-    APPLOG_INFO("[Server] Listening on %s", cfg.tcp_endpoint.c_str());
+    const int listen_fd = P_tcp_listen(cfg.addr, cfg.port);
+    APPLOG_INFO("[Server] Listening on %s:%" PRIu16, cfg.addr.c_str(), cfg.port);
 
     while (true)
     {

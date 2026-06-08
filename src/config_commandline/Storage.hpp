@@ -9,6 +9,7 @@
 #define SRC_CONFIG_COMMANDLINE_STORAGE_HPP_
 
 #include <string>
+#include <filesystem>
 #include <stdint.h>
 
 namespace App
@@ -29,11 +30,11 @@ enum class Mode
  */
 struct Storage
 {
-    Mode mode = Mode::UNDEFINED;
-    std::string tcp_endpoint{};          // host:port
-    std::string dbus_socket = "/run/dbus/system_bus_socket";
-    std::string listen_socket{};         // Local Unix socket (только client)
     bool debug = false;
+    Mode mode = Mode::UNDEFINED;
+    std::string addr{};
+    uint16_t port = 5555;
+    std::filesystem::path dbus_socket{};
 };
 
 
