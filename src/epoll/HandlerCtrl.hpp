@@ -10,10 +10,9 @@
 
 #include "epoll/EventType.hpp"
 #include "epoll/EventFlag.hpp"
+#include "epoll/types.hpp"
 #include "epoll/Handler.hpp"
 #include "utils/class.hpp"
-
-#include <functional>
 
 namespace App
 {
@@ -30,14 +29,19 @@ public:
     CLASS_NO_COPY(HandlerCtrl);
     CLASS_NO_MOVE(HandlerCtrl);
 
-    using Func = std::function<void(int fd)>;
-
     HandlerCtrl() = delete;
     HandlerCtrl(Handler& handler, Ctrl& ctrl) noexcept;
     ~HandlerCtrl() noexcept = default;
 
     /** @brief Add event */
-    HandlerCtrl& ctl_add(EventType event, Func func)
+    HandlerCtrl& on_error(ErrorHandler func)
+    {
+        m_handler.m_error_handler = std::move(func);
+        return *this;
+    }
+
+    /** @brief Add event */
+    HandlerCtrl& ctl_add(EventType event, EventHandler func)
     {
         const uint32_t mask = static_cast<uint32_t>(event);
         m_target |= mask;

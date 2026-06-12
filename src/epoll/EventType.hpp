@@ -39,6 +39,8 @@ enum class EventType : uint32_t
     HUP   = EPOLLHUP,
 };
 
+const char * event_type_to_string(EventType type);
+
 } /* namespace Epoll */
 } /* namespace App */
 
