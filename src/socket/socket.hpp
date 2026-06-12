@@ -27,6 +27,7 @@ enum class RecvErr
     OK,
     AGAIN,
     ERROR,
+    END_OF_STREAM,
 };
 
 RecvErr try_recv(

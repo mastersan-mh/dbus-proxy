@@ -21,7 +21,7 @@ Socket::SendErr Channel::try_send_to_dbus(
     );
 }
 
-bool Channel::event_send_to_dbus(
+void Channel::event_send_to_dbus(
         Buffer::WriteBuffer& wbuf
 )
 {
@@ -38,12 +38,13 @@ bool Channel::event_send_to_dbus(
                 .ctl_del(Epoll::EventType::OUT)
                 .commit();
             }
-            return true;
+            return;
         }
-        case Socket::SendErr::AGAIN: return true;
-        case Socket::SendErr::ERROR: return false;
+        case Socket::SendErr::AGAIN: return;
+        case Socket::SendErr::ERROR: throw std::runtime_error("Channel error");
     }
-    return false;
+
+    throw std::runtime_error("Channel error");
 };
 
 } /* namespace Common */

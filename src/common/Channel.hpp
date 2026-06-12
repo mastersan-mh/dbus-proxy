@@ -47,7 +47,7 @@ public:
             Buffer::WriteBuffer& wbuf
     ) const noexcept;
 
-    bool event_send_to_dbus(
+    void event_send_to_dbus(
             Buffer::WriteBuffer& wbuf
     );
 

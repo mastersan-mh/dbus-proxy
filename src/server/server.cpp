@@ -119,6 +119,8 @@ void run(const Config::Storage& cfg)
             shutdown(tcp_fd, SHUT_RDWR);
             close(tcp_fd);
 
+            DEBUG_PRINT(cfg, "Connection closed");
+
             exit(0);
         }
     }

@@ -29,7 +29,7 @@ RecvErr try_recv(
     }
     if(buf_size == 0)
     {
-        return RecvErr::ERROR;
+        return RecvErr::END_OF_STREAM;
     }
     size = buf_size;
     return RecvErr::OK;

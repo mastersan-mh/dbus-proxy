@@ -83,6 +83,34 @@ void relay(
 
     bool alive = true;
 
+    auto on_error = [&](
+            int fd,
+            Epoll::EventType event_type,
+            std::exception_ptr eptr
+    ){
+        try
+        {
+            std::rethrow_exception(eptr);
+        }
+        catch (const std::exception& e)
+        {
+            APPLOG_ERROR("Error on fd %d, event %s: %s",
+                    fd,
+                    Epoll::event_type_to_string(event_type),
+                    e.what()
+            );
+        }
+        catch (...)
+        {
+            APPLOG_ERROR("Unknown exception on fd %d, event %s",
+                    fd,
+                    Epoll::event_type_to_string(event_type)
+            );
+        }
+
+        alive = false;
+    };
+
     auto on_dbus_disconnect = [&](int){
         DEBUG_PRINT(cfg, "on_dbus_disconnect");
         alive = false;
@@ -112,7 +140,8 @@ void relay(
             {
                 case Socket::RecvErr::OK: break;
                 case Socket::RecvErr::AGAIN: return;
-                case Socket::RecvErr::ERROR: alive = false; return;
+                case Socket::RecvErr::ERROR: throw std::runtime_error("Error during on_tcp_recv on recv");
+                case Socket::RecvErr::END_OF_STREAM: alive = false; return;
             }
 
             unpacker.push(buf, buf_size);
@@ -131,9 +160,9 @@ void relay(
                         case Socket::SendErr::OK: return;
                         case Socket::SendErr::AGAIN:
                         {
-                            auto on_dbus_send = [&cfg, &chan, &output, &alive](int){
+                            auto on_dbus_send = [&cfg, &chan, &output](int){
                                 DEBUG_PRINT(cfg, "on_dbus_send");
-                                alive = chan.event_send_to_dbus(output);
+                                chan.event_send_to_dbus(output);
                             };
                             chan.dbus_handler()
                             .make_ctrl()
@@ -141,7 +170,7 @@ void relay(
                             .commit();
                             break;
                         }
-                        case Socket::SendErr::ERROR: alive = false; return;
+                        case Socket::SendErr::ERROR: throw std::runtime_error("Error during on_tcp_recv on send");
                     }
                 }
             }
@@ -163,7 +192,8 @@ void relay(
             {
                 case Socket::RecvErr::OK: break;
                 case Socket::RecvErr::AGAIN: return;
-                case Socket::RecvErr::ERROR: alive = false; return;
+                case Socket::RecvErr::ERROR: throw std::runtime_error("Error during on_dbus_recv on recv");
+                case Socket::RecvErr::END_OF_STREAM: alive = false; return;
             }
 
             DEBUG_CALL(cfg, GHelpers::hexprint("DBUS -> TCP: ", buf, buf_size));
@@ -183,7 +213,7 @@ void relay(
                     .commit();
                     break;
                 }
-                case Socket::SendErr::ERROR: alive = false; return;
+                case Socket::SendErr::ERROR: throw std::runtime_error("Error during on_dbus_recv on send");
             }
         }
     };
@@ -203,6 +233,7 @@ void relay(
 
         dbus_handler
         .make_ctrl()
+        .on_error(on_error)
         .set_flags(Epoll::EventFlag::ET)
         .ctl_add(Epoll::EventType::IN   , on_dbus_recv)
         .ctl_add(Epoll::EventType::ERR  , on_dbus_disconnect)
@@ -213,6 +244,7 @@ void relay(
 
     tcp_handler
     .make_ctrl()
+    .on_error(on_error)
     .set_flags(Epoll::EventFlag::ET)
     .ctl_add(Epoll::EventType::IN   , on_tcp_recv)
     .ctl_add(Epoll::EventType::ERR  , on_tcp_disconnect)
