@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "helpers/WriteBuffer.hpp"
+#include "buffer/WriteBuffer.hpp"
 #include "common/ChanId.hpp"
 #include "frame/Header.hpp"
 #include "utils/class.hpp"
@@ -43,22 +43,22 @@ public:
     { return P_output(channel_id).empty(); }
 
     /** @brief Get output buffer for channel with raw DBUS stream */
-    GHelpers::WriteBuffer& output(Common::Types::ChanId channel_id) noexcept
+    Buffer::WriteBuffer& output(Common::Types::ChanId channel_id) noexcept
     { return P_output(channel_id); }
 
-    const GHelpers::WriteBuffer& output(Common::Types::ChanId channel_id) const noexcept
+    const Buffer::WriteBuffer& output(Common::Types::ChanId channel_id) const noexcept
     { return P_output(channel_id); }
 
 private:
 
-    GHelpers::WriteBuffer m_in_buf{};
-    std::map<Common::Types::ChanId, GHelpers::WriteBuffer> m_out_buf{}; /**< Output buffers for channels */
+    Buffer::WriteBuffer m_in_buf{};
+    std::map<Common::Types::ChanId, Buffer::WriteBuffer> m_out_buf{}; /**< Output buffers for channels */
     bool m_header_parsed = false;
     size_t m_payload_remaining = 0;
 
     void P_process();
 
-    GHelpers::WriteBuffer& P_output(Common::Types::ChanId channel_id)
+    Buffer::WriteBuffer& P_output(Common::Types::ChanId channel_id)
     {
         auto it = m_out_buf.find(channel_id);
         if(it == m_out_buf.end())
@@ -68,7 +68,7 @@ private:
         return it->second;
     }
 
-    const GHelpers::WriteBuffer& P_output(Common::Types::ChanId channel_id) const
+    const Buffer::WriteBuffer& P_output(Common::Types::ChanId channel_id) const
     {
         auto it = m_out_buf.find(channel_id);
         if(it == m_out_buf.end())

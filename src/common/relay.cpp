@@ -1,12 +1,13 @@
 
 #include "common/relay.hpp"
 
+#include "common/Channel.hpp"
 #include "config_static/Storage.hpp"
 #include "epoll/Ctrl.hpp"
 #include "frame/builder.hpp"
 #include "frame/Unpacker.hpp"
 #include "helpers/hexprinter.hpp"
-#include "helpers/socket.hpp"
+#include "socket/socket.hpp"
 #include "helpers/debug.hpp"
 
 #include <stdexcept>
@@ -18,53 +19,26 @@ namespace App
 namespace Common
 {
 
-class Chan final
-{
-public:
-    CLASS_NO_COPY(Chan);
-    CLASS_NO_MOVE(Chan);
-
-    Chan() = delete;
-
-    Chan(
-            Common::Types::ChanId chan_id,
-            Epoll::Handler& dbus_handler
-    )
-    : m_chan_id(chan_id)
-    , m_dbus_handler(dbus_handler)
-    {}
-
-    Common::Types::ChanId chan_id() const noexcept
-    { return m_chan_id; }
-
-    Epoll::Handler& dbus_handler() noexcept
-    { return m_dbus_handler; }
-
-private:
-    const Common::Types::ChanId m_chan_id;
-    Epoll::Handler& m_dbus_handler;
-};
-
 static
-GHelpers::Socket::SendErr P_try_send_to_dbus(
+Socket::SendErr P_try_send_to_dbus(
         DbusFd fd,
-        const Chan& chan,
+        const Channel& chan,
         Frame::Unpacker& wbuf
 )
 {
-    return GHelpers::Socket::try_send(
+    return Socket::try_send(
             fd,
             wbuf.output(chan.chan_id())
     );
 }
 
 static
-GHelpers::Socket::SendErr P_try_send_to_tcp(
+Socket::SendErr P_try_send_to_tcp(
         int fd,
-        GHelpers::WriteBuffer& wbuf
+        Buffer::WriteBuffer& wbuf
 )
 {
-    return GHelpers::Socket::try_send(
+    return Socket::try_send(
             fd,
             wbuf
     );
@@ -73,14 +47,14 @@ GHelpers::Socket::SendErr P_try_send_to_tcp(
 static
 bool P_event_send_to_tcp(
         int fd,
-        GHelpers::WriteBuffer& wbuf,
+        Buffer::WriteBuffer& wbuf,
         Epoll::Handler& handler
 )
 {
-    const GHelpers::Socket::SendErr send_res = P_try_send_to_tcp(fd, wbuf);
+    const Socket::SendErr send_res = P_try_send_to_tcp(fd, wbuf);
     switch(send_res)
     {
-        case GHelpers::Socket::SendErr::OK:
+        case Socket::SendErr::OK:
         {
             /* buffer is empty, remove from epoll */
             if(wbuf.empty())
@@ -92,8 +66,8 @@ bool P_event_send_to_tcp(
             }
             return true;
         }
-        case GHelpers::Socket::SendErr::AGAIN: return true;
-        case GHelpers::Socket::SendErr::ERROR: return false;
+        case Socket::SendErr::AGAIN: return true;
+        case Socket::SendErr::ERROR: return false;
     }
     return false;
 };
@@ -101,14 +75,14 @@ bool P_event_send_to_tcp(
 static
 bool P_event_send_to_dbus(
         DbusFd fd,
-        Chan& chan,
+        Channel& chan,
         Frame::Unpacker& wbuf
 )
 {
-    const GHelpers::Socket::SendErr send_res = P_try_send_to_dbus(fd, chan, wbuf);
+    const Socket::SendErr send_res = P_try_send_to_dbus(fd, chan, wbuf);
     switch(send_res)
     {
-        case GHelpers::Socket::SendErr::OK:
+        case Socket::SendErr::OK:
         {
             /* buffer is empty, remove from epoll */
             if(wbuf.empty(chan.chan_id()))
@@ -120,8 +94,8 @@ bool P_event_send_to_dbus(
             }
             return true;
         }
-        case GHelpers::Socket::SendErr::AGAIN: return true;
-        case GHelpers::Socket::SendErr::ERROR: return false;
+        case Socket::SendErr::AGAIN: return true;
+        case Socket::SendErr::ERROR: return false;
     }
     return false;
 };
@@ -134,7 +108,7 @@ void relay(
 {
     Epoll::Ctrl epoll(8);
 
-    std::map<DbusFd, Chan> channels;
+    std::map<DbusFd, Channel> channels;
 
     std::set<Common::Types::ChanId> channels_id;
     for(const auto& [dbus_fd, chan_id] : channels_conf)
@@ -142,10 +116,10 @@ void relay(
         channels_id.emplace(chan_id);
     }
 
-    GHelpers::WriteBuffer wbuf_dbus_to_tcp;
+    Buffer::WriteBuffer wbuf_dbus_to_tcp;
     Frame::Unpacker unpacker(channels_id);
 
-    GHelpers::Socket::setnonblock(tcp_fd);
+    Socket::setnonblock(tcp_fd);
     auto& tcp_handler = epoll.handler_create(tcp_fd);
 
     bool alive = true;
@@ -167,7 +141,7 @@ void relay(
 
     auto on_dbus_send = [&](int fd){
         DEBUG_PRINT(cfg, "on_dbus_send");
-        Chan& chan = channels.at(fd);
+        Channel& chan = channels.at(fd);
         alive = P_event_send_to_dbus(fd, chan, unpacker);
     };
 
@@ -178,13 +152,13 @@ void relay(
         while(alive)
         {
             size_t buf_size;
-            const GHelpers::Socket::RecvErr res_recv =
-                    GHelpers::Socket::try_recv(fd, buf, sizeof(buf), buf_size);
+            const Socket::RecvErr res_recv =
+                    Socket::try_recv(fd, buf, sizeof(buf), buf_size);
             switch(res_recv)
             {
-                case GHelpers::Socket::RecvErr::OK: break;
-                case GHelpers::Socket::RecvErr::AGAIN: return;
-                case GHelpers::Socket::RecvErr::ERROR: alive = false; return;
+                case Socket::RecvErr::OK: break;
+                case Socket::RecvErr::AGAIN: return;
+                case Socket::RecvErr::ERROR: alive = false; return;
             }
 
             unpacker.push(buf, buf_size);
@@ -195,12 +169,12 @@ void relay(
             {
                 if(!unpacker.empty(chan.chan_id()))
                 {
-                    const GHelpers::Socket::SendErr send_res =
+                    const Socket::SendErr send_res =
                             P_try_send_to_dbus(dbus_fd, chan, unpacker);
                     switch(send_res)
                     {
-                        case GHelpers::Socket::SendErr::OK: return;
-                        case GHelpers::Socket::SendErr::AGAIN:
+                        case Socket::SendErr::OK: return;
+                        case Socket::SendErr::AGAIN:
                         {
                             chan.dbus_handler()
                             .make_ctrl()
@@ -208,7 +182,7 @@ void relay(
                             .commit();
                             break;
                         }
-                        case GHelpers::Socket::SendErr::ERROR: alive = false; return;
+                        case Socket::SendErr::ERROR: alive = false; return;
                     }
                 }
             }
@@ -219,30 +193,30 @@ void relay(
         static const size_t buf_capacity = 4096;
         uint8_t buf[buf_capacity];
 
-        const Chan& chan = channels.at(fd);
+        const Channel& chan = channels.at(fd);
 
         while(alive)
         {
             size_t buf_size;
-            const GHelpers::Socket::RecvErr res_recv =
-                    GHelpers::Socket::try_recv(fd, buf, sizeof(buf), buf_size);
+            const Socket::RecvErr res_recv =
+                    Socket::try_recv(fd, buf, sizeof(buf), buf_size);
             switch(res_recv)
             {
-                case GHelpers::Socket::RecvErr::OK: break;
-                case GHelpers::Socket::RecvErr::AGAIN: return;
-                case GHelpers::Socket::RecvErr::ERROR: alive = false; return;
+                case Socket::RecvErr::OK: break;
+                case Socket::RecvErr::AGAIN: return;
+                case Socket::RecvErr::ERROR: alive = false; return;
             }
 
             DEBUG_CALL(cfg, GHelpers::hexprint("DBUS -> TCP: ", buf, buf_size));
 
             Frame::build(cfg, wbuf_dbus_to_tcp, chan.chan_id(), buf, buf_size);
 
-            const GHelpers::Socket::SendErr send_res =
+            const Socket::SendErr send_res =
                     P_try_send_to_tcp(tcp_fd, wbuf_dbus_to_tcp);
             switch(send_res)
             {
-                case GHelpers::Socket::SendErr::OK: return;
-                case GHelpers::Socket::SendErr::AGAIN:
+                case Socket::SendErr::OK: return;
+                case Socket::SendErr::AGAIN:
                 {
                     tcp_handler
                     .make_ctrl()
@@ -250,7 +224,7 @@ void relay(
                     .commit();
                     break;
                 }
-                case GHelpers::Socket::SendErr::ERROR: alive = false; return;
+                case Socket::SendErr::ERROR: alive = false; return;
             }
         }
     };
@@ -258,7 +232,7 @@ void relay(
 
     for(const auto& [dbus_fd, chan_id] : channels_conf)
     {
-        GHelpers::Socket::setnonblock(dbus_fd);
+        Socket::setnonblock(dbus_fd);
         auto& dbus_handler = epoll.handler_create(dbus_fd);
 
         channels.try_emplace(

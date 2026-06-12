@@ -1,20 +1,17 @@
 /*
  * socket.hpp
  *
- *  Created on: 1 июн. 2026 г.
+ *  Created on: 1 jun. 2026 г.
  *      Author: mastersan
  */
 
-#ifndef SRC_HELPERS_SOCKET_HPP_
-#define SRC_HELPERS_SOCKET_HPP_
+#pragma once
 
-#include "helpers/WriteBuffer.hpp"
+#include "buffer/WriteBuffer.hpp"
 
 #include <fcntl.h>
 
 namespace App
-{
-namespace GHelpers
 {
 namespace Socket
 {
@@ -45,13 +42,11 @@ enum class SendErr
     AGAIN,
     ERROR,
 };
+
 SendErr try_send(
         int fd,
-        WriteBuffer& wbuf
+        Buffer::WriteBuffer& wbuf
 );
 
 } /* namespace Socket */
-} /* namespace GHelpers */
 } /* namespace App */
-
-#endif /* SRC_HELPERS_SOCKET_HPP_ */

@@ -5,8 +5,7 @@
  *      Author: mastersan
  */
 
-#ifndef SRC_CONFIG_COMMANDLINE_STORAGE_HPP_
-#define SRC_CONFIG_COMMANDLINE_STORAGE_HPP_
+#pragma once
 
 #include "common/ChanId.hpp"
 
@@ -28,8 +27,7 @@ enum class Mode
 };
 
 /**
- * @brief
- * Конфигурация
+ * @brief Configuration
  */
 struct Storage
 {
@@ -44,4 +42,3 @@ struct Storage
 } /* namespace Config */
 } /* namespace App */
 
-#endif /* SRC_CONFIG_COMMANDLINE_STORAGE_HPP_ */

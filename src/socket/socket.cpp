@@ -1,13 +1,11 @@
 
-#include "helpers/socket.hpp"
+#include "socket/socket.hpp"
 
 #include <stdint.h>
 #include <sys/socket.h>
 #include <errno.h>
 
 namespace App
-{
-namespace GHelpers
 {
 namespace Socket
 {
@@ -39,7 +37,7 @@ RecvErr try_recv(
 
 SendErr try_send(
         int fd,
-        WriteBuffer& wbuf
+        Buffer::WriteBuffer& wbuf
 )
 {
     while(!wbuf.empty())
@@ -51,20 +49,19 @@ SendErr try_send(
             const int err = errno;
             if (err == EAGAIN || err == EWOULDBLOCK)
             {
-                return SendErr::AGAIN; // Буфер полон → ждём EPOLLOUT
+                return SendErr::AGAIN;
             }
-            return SendErr::ERROR; // Ошибка
+            return SendErr::ERROR;
         }
         if (written == 0)
         {
-            return SendErr::ERROR; // Не должно быть в O_NONBLOCK
+            return SendErr::ERROR;
         }
         wbuf.strip_begin(written);
     }
-    return SendErr::OK; // Буфер пуст
+    return SendErr::OK;
 };
 
 } /* namespace Socket */
-} /* namespace GHelpers */
 } /* namespace App */
 

@@ -1,8 +1,7 @@
 
-#ifndef SRC_COMMON_RELAY_HPP_
-#define SRC_COMMON_RELAY_HPP_
+#pragma once
 
-#include "config_commandline/Storage.hpp"
+#include "config_storage/Storage.hpp"
 #include "common/ChanId.hpp"
 
 #include <map>
@@ -22,5 +21,3 @@ void relay(
 
 } /* namespace Common */
 } /* namespace App */
-
-#endif /* SRC_COMMON_RELAY_HPP_ */

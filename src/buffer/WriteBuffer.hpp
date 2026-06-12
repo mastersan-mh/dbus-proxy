@@ -1,12 +1,11 @@
 /*
  * WriteBuffer.hpp
  *
- *  Created on: 27 мая 2026 г.
+ *  Created on: 27 may 2026 г.
  *      Author: mastersan
  */
 
-#ifndef SRC_HELPERS_WRITEBUFFER_HPP_
-#define SRC_HELPERS_WRITEBUFFER_HPP_
+#pragma once
 
 #include <algorithm>
 #include <cstring>
@@ -19,7 +18,7 @@
 
 namespace App
 {
-namespace GHelpers
+namespace Buffer
 {
 
 class WriteBuffer final
@@ -88,7 +87,7 @@ private:
     std::vector<uint8_t> m_data{};
     size_t m_read_ofs = 0; /**< Offset of logical buffer inside vector */
 };
-} /* namespace GHelpers */
+
+} /* namespace Buffer */
 } /* namespace App */
 
-#endif /* SRC_HELPERS_WRITEBUFFER_HPP_ */
