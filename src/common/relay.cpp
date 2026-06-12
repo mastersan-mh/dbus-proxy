@@ -3,9 +3,9 @@
 
 #include "config_static/Storage.hpp"
 #include "epoll/Ctrl.hpp"
-#include "helpers/Unpacker.hpp"
+#include "frame/builder.hpp"
+#include "frame/Unpacker.hpp"
 #include "helpers/hexprinter.hpp"
-#include "helpers/frame.hpp"
 #include "helpers/socket.hpp"
 #include "helpers/debug.hpp"
 
@@ -21,7 +21,7 @@ namespace Common
 static
 GHelpers::Socket::SendErr P_try_send_to_dbus(
         int fd,
-        GHelpers::Unpacker& wbuf
+        Frame::Unpacker& wbuf
 )
 {
     return GHelpers::Socket::try_send(
@@ -73,7 +73,7 @@ bool P_event_send_to_tcp(
 static
 bool P_event_send_to_dbus(
         int fd,
-        GHelpers::Unpacker& wbuf,
+        Frame::Unpacker& wbuf,
         Epoll::Handler& handler
 )
 {
@@ -110,7 +110,7 @@ void relay(
     GHelpers::Socket::setnonblock(tcp_fd);
 
     GHelpers::WriteBuffer wbuf_dbus_to_tcp;
-    GHelpers::Unpacker unpacker;
+    Frame::Unpacker unpacker;
 
     auto& dbus_handler = epoll.handler_create(dbus_fd);
     auto& tcp_handler = epoll.handler_create(tcp_fd);
@@ -194,7 +194,7 @@ void relay(
             }
 
             DEBUG_CALL(cfg, GHelpers::hexprint("DBUS -> TCP: ", buf, buf_size));
-            GHelpers::Frame::build(cfg, wbuf_dbus_to_tcp, buf, buf_size);
+            Frame::build(cfg, wbuf_dbus_to_tcp, buf, buf_size);
 
             const GHelpers::Socket::SendErr send_res =
                     P_try_send_to_tcp(tcp_fd, wbuf_dbus_to_tcp);

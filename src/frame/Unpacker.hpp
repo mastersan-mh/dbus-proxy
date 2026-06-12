@@ -5,8 +5,7 @@
  *      Author: mastersan
  */
 
-#ifndef SRC_CLIENT_UNPACKER_HPP_
-#define SRC_CLIENT_UNPACKER_HPP_
+#pragma once
 
 #include "helpers/WriteBuffer.hpp"
 #include "utils/class.hpp"
@@ -18,7 +17,7 @@
 
 namespace App
 {
-namespace GHelpers
+namespace Frame
 {
 
 class Unpacker
@@ -60,7 +59,5 @@ private:
     size_t m_payload_remaining = 0;
 };
 
-} /* namespace GHelpers */
+} /* namespace Frame */
 } /* namespace App */
-
-#endif /* SRC_CLIENT_UNPACKER_HPP_ */

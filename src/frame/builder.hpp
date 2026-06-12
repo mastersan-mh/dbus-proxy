@@ -5,15 +5,12 @@
  *      Author: mastersan
  */
 
-#ifndef SRC_HELPERS_FRAME_HPP_
-#define SRC_HELPERS_FRAME_HPP_
+#pragma once
 
 #include "helpers/debug.hpp"
 #include "helpers/WriteBuffer.hpp"
 
 namespace App
-{
-namespace GHelpers
 {
 namespace Frame
 {
@@ -21,7 +18,7 @@ namespace Frame
 static inline
 void build(
         const Config::Storage& cfg,
-        WriteBuffer& wbuf,
+        GHelpers::WriteBuffer& wbuf,
         const uint8_t * data,
         uint32_t size
 )
@@ -33,7 +30,4 @@ void build(
 }
 
 } /* namespace Frame */
-} /* namespace GHelpers */
 } /* namespace App */
-
-#endif /* SRC_HELPERS_FRAME_HPP_ */

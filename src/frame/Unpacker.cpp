@@ -5,11 +5,11 @@
  *      Author: mastersan
  */
 
-#include "helpers/Unpacker.hpp"
+#include "frame/Unpacker.hpp"
 
 namespace App
 {
-namespace GHelpers
+namespace Frame
 {
 
 void Unpacker::push(const void* data, size_t size)
@@ -68,5 +68,5 @@ void Unpacker::process()
     }
 }
 
-} /* namespace GHelpers */
+} /* namespace Frame */
 } /* namespace App */
