@@ -20,6 +20,9 @@ namespace App
 #define APPLOG_ERROR(format, ...) \
     printf("Error: " format "\n", ##__VA_ARGS__)
 
+#define APPLOG_WARN(format, ...) \
+    printf("Warning: " format "\n", ##__VA_ARGS__)
+
 #define APPLOG_INFO(format, ...) \
     printf("Info: " format "\n", ##__VA_ARGS__)
 

@@ -8,7 +8,10 @@
 #ifndef SRC_CONFIG_COMMANDLINE_STORAGE_HPP_
 #define SRC_CONFIG_COMMANDLINE_STORAGE_HPP_
 
+#include "common/ChanId.hpp"
+
 #include <string>
+#include <map>
 #include <filesystem>
 #include <stdint.h>
 
@@ -34,7 +37,7 @@ struct Storage
     Mode mode = Mode::UNDEFINED;
     std::string addr{};
     uint16_t port = 5555;
-    std::filesystem::path dbus_socket{};
+    std::map<Common::Types::ChanId, std::filesystem::path> bus_mapping{};
 };
 
 

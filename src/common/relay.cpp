@@ -3,9 +3,9 @@
 
 #include "config_static/Storage.hpp"
 #include "epoll/Ctrl.hpp"
-#include "helpers/Unpacker.hpp"
+#include "frame/builder.hpp"
+#include "frame/Unpacker.hpp"
 #include "helpers/hexprinter.hpp"
-#include "helpers/frame.hpp"
 #include "helpers/socket.hpp"
 #include "helpers/debug.hpp"
 
@@ -18,15 +18,43 @@ namespace App
 namespace Common
 {
 
+class Chan final
+{
+public:
+    CLASS_NO_COPY(Chan);
+    CLASS_NO_MOVE(Chan);
+
+    Chan() = delete;
+
+    Chan(
+            Common::Types::ChanId chan_id,
+            Epoll::Handler& dbus_handler
+    )
+    : m_chan_id(chan_id)
+    , m_dbus_handler(dbus_handler)
+    {}
+
+    Common::Types::ChanId chan_id() const noexcept
+    { return m_chan_id; }
+
+    Epoll::Handler& dbus_handler() noexcept
+    { return m_dbus_handler; }
+
+private:
+    const Common::Types::ChanId m_chan_id;
+    Epoll::Handler& m_dbus_handler;
+};
+
 static
 GHelpers::Socket::SendErr P_try_send_to_dbus(
-        int fd,
-        GHelpers::Unpacker& wbuf
+        DbusFd fd,
+        const Chan& chan,
+        Frame::Unpacker& wbuf
 )
 {
     return GHelpers::Socket::try_send(
             fd,
-            wbuf.output()
+            wbuf.output(chan.chan_id())
     );
 }
 
@@ -72,20 +100,20 @@ bool P_event_send_to_tcp(
 
 static
 bool P_event_send_to_dbus(
-        int fd,
-        GHelpers::Unpacker& wbuf,
-        Epoll::Handler& handler
+        DbusFd fd,
+        Chan& chan,
+        Frame::Unpacker& wbuf
 )
 {
-    const GHelpers::Socket::SendErr send_res = P_try_send_to_dbus(fd, wbuf);
+    const GHelpers::Socket::SendErr send_res = P_try_send_to_dbus(fd, chan, wbuf);
     switch(send_res)
     {
         case GHelpers::Socket::SendErr::OK:
         {
             /* buffer is empty, remove from epoll */
-            if(wbuf.empty())
+            if(wbuf.empty(chan.chan_id()))
             {
-                handler
+                chan.dbus_handler()
                 .make_ctrl()
                 .ctl_del(Epoll::EventType::OUT)
                 .commit();
@@ -100,22 +128,28 @@ bool P_event_send_to_dbus(
 
 void relay(
         const Config::Storage& cfg,
-        int dbus_fd,
+        const std::map<DbusFd, Common::Types::ChanId>& channels_conf,
         int tcp_fd
 )
 {
     Epoll::Ctrl epoll(8);
 
-    GHelpers::Socket::setnonblock(dbus_fd);
-    GHelpers::Socket::setnonblock(tcp_fd);
+    std::map<DbusFd, Chan> channels;
+
+    std::set<Common::Types::ChanId> channels_id;
+    for(const auto& [dbus_fd, chan_id] : channels_conf)
+    {
+        channels_id.emplace(chan_id);
+    }
 
     GHelpers::WriteBuffer wbuf_dbus_to_tcp;
-    GHelpers::Unpacker unpacker;
+    Frame::Unpacker unpacker(channels_id);
 
-    auto& dbus_handler = epoll.handler_create(dbus_fd);
+    GHelpers::Socket::setnonblock(tcp_fd);
     auto& tcp_handler = epoll.handler_create(tcp_fd);
 
     bool alive = true;
+
     auto on_dbus_disconnect = [&](int){
         DEBUG_PRINT(cfg, "on_dbus_disconnect");
         alive = false;
@@ -133,7 +167,8 @@ void relay(
 
     auto on_dbus_send = [&](int fd){
         DEBUG_PRINT(cfg, "on_dbus_send");
-        alive = P_event_send_to_dbus(fd, unpacker, dbus_handler);
+        Chan& chan = channels.at(fd);
+        alive = P_event_send_to_dbus(fd, chan, unpacker);
     };
 
     auto on_tcp_recv = [&](int fd){
@@ -156,22 +191,25 @@ void relay(
 
             DEBUG_CALL(cfg, GHelpers::hexprint("TCP -> DBUS: ", buf, buf_size));
 
-            if(!unpacker.empty())
+            for(auto& [dbus_fd, chan] : channels)
             {
-                const GHelpers::Socket::SendErr send_res =
-                        P_try_send_to_dbus(dbus_fd, unpacker);
-                switch(send_res)
+                if(!unpacker.empty(chan.chan_id()))
                 {
-                    case GHelpers::Socket::SendErr::OK: return;
-                    case GHelpers::Socket::SendErr::AGAIN:
+                    const GHelpers::Socket::SendErr send_res =
+                            P_try_send_to_dbus(dbus_fd, chan, unpacker);
+                    switch(send_res)
                     {
-                        dbus_handler
-                        .make_ctrl()
-                        .ctl_add(Epoll::EventType::OUT, on_dbus_send)
-                        .commit();
-                        break;
+                        case GHelpers::Socket::SendErr::OK: return;
+                        case GHelpers::Socket::SendErr::AGAIN:
+                        {
+                            chan.dbus_handler()
+                            .make_ctrl()
+                            .ctl_add(Epoll::EventType::OUT, on_dbus_send)
+                            .commit();
+                            break;
+                        }
+                        case GHelpers::Socket::SendErr::ERROR: alive = false; return;
                     }
-                    case GHelpers::Socket::SendErr::ERROR: alive = false; return;
                 }
             }
         }
@@ -180,6 +218,8 @@ void relay(
     auto on_dbus_recv = [&](int fd){
         static const size_t buf_capacity = 4096;
         uint8_t buf[buf_capacity];
+
+        const Chan& chan = channels.at(fd);
 
         while(alive)
         {
@@ -194,7 +234,8 @@ void relay(
             }
 
             DEBUG_CALL(cfg, GHelpers::hexprint("DBUS -> TCP: ", buf, buf_size));
-            GHelpers::Frame::build(cfg, wbuf_dbus_to_tcp, buf, buf_size);
+
+            Frame::build(cfg, wbuf_dbus_to_tcp, chan.chan_id(), buf, buf_size);
 
             const GHelpers::Socket::SendErr send_res =
                     P_try_send_to_tcp(tcp_fd, wbuf_dbus_to_tcp);
@@ -214,14 +255,27 @@ void relay(
         }
     };
 
-    dbus_handler
-    .make_ctrl()
-    .set_flags(Epoll::EventFlag::ET)
-    .ctl_add(Epoll::EventType::IN   , on_dbus_recv)
-    .ctl_add(Epoll::EventType::ERR  , on_dbus_disconnect)
-    .ctl_add(Epoll::EventType::HUP  , on_dbus_disconnect)
-    .ctl_add(Epoll::EventType::RDHUP, on_dbus_disconnect)
-    .commit();
+
+    for(const auto& [dbus_fd, chan_id] : channels_conf)
+    {
+        GHelpers::Socket::setnonblock(dbus_fd);
+        auto& dbus_handler = epoll.handler_create(dbus_fd);
+
+        channels.try_emplace(
+                dbus_fd,
+                chan_id,
+                dbus_handler
+        );
+
+        dbus_handler
+        .make_ctrl()
+        .set_flags(Epoll::EventFlag::ET)
+        .ctl_add(Epoll::EventType::IN   , on_dbus_recv)
+        .ctl_add(Epoll::EventType::ERR  , on_dbus_disconnect)
+        .ctl_add(Epoll::EventType::HUP  , on_dbus_disconnect)
+        .ctl_add(Epoll::EventType::RDHUP, on_dbus_disconnect)
+        .commit();
+    }
 
     tcp_handler
     .make_ctrl()

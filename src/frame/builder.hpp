@@ -5,15 +5,14 @@
  *      Author: mastersan
  */
 
-#ifndef SRC_HELPERS_FRAME_HPP_
-#define SRC_HELPERS_FRAME_HPP_
+#pragma once
 
 #include "helpers/debug.hpp"
 #include "helpers/WriteBuffer.hpp"
+#include "frame/Header.hpp"
+#include "logger.hpp"
 
 namespace App
-{
-namespace GHelpers
 {
 namespace Frame
 {
@@ -21,19 +20,25 @@ namespace Frame
 static inline
 void build(
         const Config::Storage& cfg,
-        WriteBuffer& wbuf,
-        const uint8_t * data,
+        GHelpers::WriteBuffer& wbuf,
+        Common::Types::ChanId chan_id,
+        const void * data,
         uint32_t size
 )
 {
-    const uint32_t size_be = htobe32(size);
+    const Frame::Header header =
+    {
+            .payload_size = htobe32(size),
+            .channel = chan_id,
+            .gap0 = 0,
+            .gap1 = 0,
+            .gap2 = 0,
+    };
+
     DEBUG_PRINT(cfg, "build[raw]: len = %" PRIu32, size);
-    wbuf.push(size_be);
+    wbuf.push(&header, sizeof(header));
     wbuf.push(data, size);
 }
 
 } /* namespace Frame */
-} /* namespace GHelpers */
 } /* namespace App */
-
-#endif /* SRC_HELPERS_FRAME_HPP_ */
