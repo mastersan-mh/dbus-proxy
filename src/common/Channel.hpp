@@ -7,8 +7,11 @@
 
 #pragma once
 
+#include "common/DbusFd.hpp"
 #include "common/ChanId.hpp"
 #include "epoll/Handler.hpp"
+#include "socket/socket.hpp"
+#include "frame/Unpacker.hpp"
 #include "utils/class.hpp"
 
 namespace App
@@ -24,12 +27,14 @@ public:
 
     Channel() = delete;
 
-    Channel(
-            Common::Types::ChanId chan_id,
+    explicit Channel(
+            DbusFd fd,
+            Types::ChanId chan_id,
             Epoll::Handler& dbus_handler
     )
-    : m_chan_id(chan_id)
-    , m_dbus_handler(dbus_handler)
+    : m_dbus_handler(dbus_handler)
+    , m_fd(fd)
+    , m_chan_id(chan_id)
     {}
 
     Common::Types::ChanId chan_id() const noexcept
@@ -38,9 +43,18 @@ public:
     Epoll::Handler& dbus_handler() noexcept
     { return m_dbus_handler; }
 
+    Socket::SendErr try_send_to_dbus(
+            Buffer::WriteBuffer& wbuf
+    ) const noexcept;
+
+    bool event_send_to_dbus(
+            Buffer::WriteBuffer& wbuf
+    );
+
 private:
-    const Common::Types::ChanId m_chan_id;
     Epoll::Handler& m_dbus_handler;
+    const DbusFd m_fd;
+    const Common::Types::ChanId m_chan_id;
 };
 
 } /* namespace Common */

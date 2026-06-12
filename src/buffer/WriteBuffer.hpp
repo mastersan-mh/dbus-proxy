@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "utils/class.hpp"
+
 #include <algorithm>
 #include <cstring>
 #include <type_traits>
@@ -24,6 +26,10 @@ namespace Buffer
 class WriteBuffer final
 {
 public:
+
+    CLASS_NO_COPY(WriteBuffer);
+    CLASS_NO_MOVE(WriteBuffer);
+
     WriteBuffer() = default;
 
     explicit WriteBuffer(size_t reserve)
@@ -69,7 +75,7 @@ public:
     /**
      * @brief Force compacting
      */
-    void compact();
+    void compact() noexcept;
 
     void push(const void* src_data, size_t data_size);
 

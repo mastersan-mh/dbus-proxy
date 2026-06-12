@@ -32,7 +32,7 @@ void WriteBuffer::strip_begin(size_t n)
     }
 }
 
-void WriteBuffer::compact()
+void WriteBuffer::compact() noexcept
 {
     if (m_read_ofs == 0)
     {

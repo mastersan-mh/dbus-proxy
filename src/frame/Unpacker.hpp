@@ -38,16 +38,12 @@ public:
     /** @brief Append raw bytes */
     void push(const void* data, size_t size);
 
-    /** @brief Is it empty? */
-    bool empty(Common::Types::ChanId channel_id) const noexcept
-    { return P_output(channel_id).empty(); }
-
     /** @brief Get output buffer for channel with raw DBUS stream */
-    Buffer::WriteBuffer& output(Common::Types::ChanId channel_id) noexcept
-    { return P_output(channel_id); }
+    Buffer::WriteBuffer& buffer(Common::Types::ChanId channel_id) noexcept
+    { return P_buffer(channel_id); }
 
-    const Buffer::WriteBuffer& output(Common::Types::ChanId channel_id) const noexcept
-    { return P_output(channel_id); }
+    const Buffer::WriteBuffer& buffer(Common::Types::ChanId channel_id) const noexcept
+    { return P_buffer(channel_id); }
 
 private:
 
@@ -58,7 +54,7 @@ private:
 
     void P_process();
 
-    Buffer::WriteBuffer& P_output(Common::Types::ChanId channel_id)
+    Buffer::WriteBuffer& P_buffer(Common::Types::ChanId channel_id)
     {
         auto it = m_out_buf.find(channel_id);
         if(it == m_out_buf.end())
@@ -68,7 +64,7 @@ private:
         return it->second;
     }
 
-    const Buffer::WriteBuffer& P_output(Common::Types::ChanId channel_id) const
+    const Buffer::WriteBuffer& P_buffer(Common::Types::ChanId channel_id) const
     {
         auto it = m_out_buf.find(channel_id);
         if(it == m_out_buf.end())

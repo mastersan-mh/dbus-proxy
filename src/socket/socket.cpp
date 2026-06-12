@@ -38,7 +38,7 @@ RecvErr try_recv(
 SendErr try_send(
         int fd,
         Buffer::WriteBuffer& wbuf
-)
+) noexcept
 {
     while(!wbuf.empty())
     {

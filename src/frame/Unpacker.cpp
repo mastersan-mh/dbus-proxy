@@ -16,7 +16,7 @@ Unpacker::Unpacker(const std::set<Common::Types::ChanId>& channels)
 {
     for(const auto chan_id : channels)
     {
-        m_out_buf[chan_id] = {};
+        m_out_buf.try_emplace(chan_id);
     }
 }
 

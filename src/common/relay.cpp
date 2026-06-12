@@ -20,19 +20,6 @@ namespace Common
 {
 
 static
-Socket::SendErr P_try_send_to_dbus(
-        DbusFd fd,
-        const Channel& chan,
-        Frame::Unpacker& wbuf
-)
-{
-    return Socket::try_send(
-            fd,
-            wbuf.output(chan.chan_id())
-    );
-}
-
-static
 Socket::SendErr P_try_send_to_tcp(
         int fd,
         Buffer::WriteBuffer& wbuf
@@ -60,34 +47,6 @@ bool P_event_send_to_tcp(
             if(wbuf.empty())
             {
                 handler
-                .make_ctrl()
-                .ctl_del(Epoll::EventType::OUT)
-                .commit();
-            }
-            return true;
-        }
-        case Socket::SendErr::AGAIN: return true;
-        case Socket::SendErr::ERROR: return false;
-    }
-    return false;
-};
-
-static
-bool P_event_send_to_dbus(
-        DbusFd fd,
-        Channel& chan,
-        Frame::Unpacker& wbuf
-)
-{
-    const Socket::SendErr send_res = P_try_send_to_dbus(fd, chan, wbuf);
-    switch(send_res)
-    {
-        case Socket::SendErr::OK:
-        {
-            /* buffer is empty, remove from epoll */
-            if(wbuf.empty(chan.chan_id()))
-            {
-                chan.dbus_handler()
                 .make_ctrl()
                 .ctl_del(Epoll::EventType::OUT)
                 .commit();
@@ -139,11 +98,6 @@ void relay(
         alive = P_event_send_to_tcp(fd, wbuf_dbus_to_tcp, tcp_handler);
     };
 
-    auto on_dbus_send = [&](int fd){
-        DEBUG_PRINT(cfg, "on_dbus_send");
-        Channel& chan = channels.at(fd);
-        alive = P_event_send_to_dbus(fd, chan, unpacker);
-    };
 
     auto on_tcp_recv = [&](int fd){
         static const size_t buf_capacity = 4096;
@@ -167,15 +121,20 @@ void relay(
 
             for(auto& [dbus_fd, chan] : channels)
             {
-                if(!unpacker.empty(chan.chan_id()))
+                auto& output = unpacker.buffer(chan.chan_id());
+                if(!output.empty())
                 {
                     const Socket::SendErr send_res =
-                            P_try_send_to_dbus(dbus_fd, chan, unpacker);
+                            chan.try_send_to_dbus(unpacker.buffer(chan.chan_id()));
                     switch(send_res)
                     {
                         case Socket::SendErr::OK: return;
                         case Socket::SendErr::AGAIN:
                         {
+                            auto on_dbus_send = [&cfg, &chan, &output, &alive](int){
+                                DEBUG_PRINT(cfg, "on_dbus_send");
+                                alive = chan.event_send_to_dbus(output);
+                            };
                             chan.dbus_handler()
                             .make_ctrl()
                             .ctl_add(Epoll::EventType::OUT, on_dbus_send)
@@ -236,6 +195,7 @@ void relay(
         auto& dbus_handler = epoll.handler_create(dbus_fd);
 
         channels.try_emplace(
+                dbus_fd,
                 dbus_fd,
                 chan_id,
                 dbus_handler

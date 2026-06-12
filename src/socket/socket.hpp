@@ -46,7 +46,7 @@ enum class SendErr
 SendErr try_send(
         int fd,
         Buffer::WriteBuffer& wbuf
-);
+) noexcept;
 
 } /* namespace Socket */
 } /* namespace App */
