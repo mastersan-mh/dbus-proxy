@@ -31,7 +31,7 @@ enum class Mode
  */
 struct Storage
 {
-    bool debug = false;
+    unsigned debug = 0;
     Mode mode = Mode::UNDEFINED;
     std::string addr{};
     uint16_t port = 5555;

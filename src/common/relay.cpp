@@ -107,17 +107,17 @@ void relay(
     };
 
     auto on_dbus_disconnect = [&](int){
-        DEBUG_PRINT(cfg, "on_dbus_disconnect");
+        DEBUG_PRINT(cfg, 1, "on_dbus_disconnect");
         alive = false;
     };
 
     auto on_tcp_disconnect = [&](int){
-        DEBUG_PRINT(cfg, "on_tcp_disconnect");
+        DEBUG_PRINT(cfg, 1, "on_tcp_disconnect");
         alive = false;
     };
 
     auto on_tcp_send = [&](int fd){
-        DEBUG_PRINT(cfg, "on_tcp_send");
+        DEBUG_PRINT(cfg, 1, "on_tcp_send");
         alive = P_event_send_to_tcp(fd, wbuf_dbus_to_tcp, tcp_handler);
     };
 
@@ -139,8 +139,8 @@ void relay(
                 case Socket::RecvErr::END_OF_STREAM: return;
             }
 
-            DEBUG_PRINT(cfg, "TCP recv frame: len = %zu", buf_size);
-            DEBUG_CALL(cfg, GHelpers::hexprint("TCP -> DBUS: ", buf, buf_size));
+            DEBUG_PRINT(cfg, 1, "TCP recv frame: len = %zu", buf_size);
+            DEBUG_CALL(cfg, 2, GHelpers::hexprint("TCP -> DBUS: ", buf, buf_size));
 
             demultiplexor.push(buf, buf_size);
         }
@@ -165,8 +165,8 @@ void relay(
                 case Socket::RecvErr::END_OF_STREAM: return;
             }
 
-            DEBUG_PRINT(cfg, "DBUS recv frame: len = %zu", buf_size);
-            DEBUG_CALL(cfg, GHelpers::hexprint("DBUS -> TCP: ", buf, buf_size));
+            DEBUG_PRINT(cfg, 1, "DBUS recv frame: len = %zu", buf_size);
+            DEBUG_CALL(cfg, 2, GHelpers::hexprint("DBUS -> TCP: ", buf, buf_size));
 
             Frame::build(wbuf_dbus_to_tcp, chan.chan_id(), buf, buf_size);
 
