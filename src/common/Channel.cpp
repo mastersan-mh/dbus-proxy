@@ -52,22 +52,22 @@ void Channel::P_event_send_to_dbus(
 };
 
 void Channel::send_to_dbus(
-        const Config::Storage& cfg,
-        Buffer::WriteBuffer& output
+        const void* data,
+        size_t size
 )
 {
-    if(!output.empty())
+    m_buffer.push(data, size);
+    if(!m_buffer.empty())
     {
         const Socket::SendErr send_res =
-                P_try_send_to_dbus(output);
+                P_try_send_to_dbus(m_buffer);
         switch(send_res)
         {
             case Socket::SendErr::OK: return;
             case Socket::SendErr::AGAIN:
             {
-                auto on_dbus_send = [this, &cfg, &output](int){
-                    DEBUG_PRINT(cfg, "Event: on_dbus_send()");
-                    P_event_send_to_dbus(output);
+                auto on_dbus_send = [this](int){
+                    P_event_send_to_dbus(m_buffer);
                 };
                 m_dbus_handler
                 .make_ctrl()

@@ -9,6 +9,7 @@
 
 #include "buffer/WriteBuffer.hpp"
 #include "common/ChanId.hpp"
+#include "common/Channel.hpp"
 #include "frame/Header.hpp"
 #include "utils/class.hpp"
 
@@ -17,7 +18,7 @@
 #include <cstring>
 
 #include <stdexcept>
-#include <set>
+#include <memory>
 #include <map>
 #include <endian.h>
 
@@ -34,49 +35,30 @@ class Demultiplexor
 public:
     CLASS_NO_COPY(Demultiplexor);
     CLASS_NO_MOVE(Demultiplexor);
-    Demultiplexor() = delete;
 
-    Demultiplexor(const std::set<Common::Types::ChanId>& channels);
+    Demultiplexor() = default;
+
+    void register_channel(
+            std::shared_ptr<Common::Channel>& channel
+    )
+    {
+        m_channels.try_emplace(
+                channel->chan_id(),
+                channel
+        );
+    }
 
     /** @brief Append raw bytes */
     void push(const void* data, size_t size);
 
-    /** @brief Get output buffer for channel with raw DBUS stream */
-    Buffer::WriteBuffer& buffer(Common::Types::ChanId channel_id) noexcept
-    { return P_buffer(channel_id); }
-
-    const Buffer::WriteBuffer& buffer(Common::Types::ChanId channel_id) const noexcept
-    { return P_buffer(channel_id); }
-
 private:
 
     Buffer::WriteBuffer m_in_buf{};
-    std::map<Common::Types::ChanId, Buffer::WriteBuffer> m_out_buf{}; /**< Output buffers for channels */
+    std::map<Common::Types::ChanId, std::shared_ptr<Common::Channel>> m_channels{};
     bool m_header_parsed = false;
     size_t m_payload_remaining = 0;
 
     void P_process();
-
-    Buffer::WriteBuffer& P_buffer(Common::Types::ChanId channel_id)
-    {
-        auto it = m_out_buf.find(channel_id);
-        if(it == m_out_buf.end())
-        {
-            throw std::runtime_error("Requested invalid channel");
-        }
-        return it->second;
-    }
-
-    const Buffer::WriteBuffer& P_buffer(Common::Types::ChanId channel_id) const
-    {
-        auto it = m_out_buf.find(channel_id);
-        if(it == m_out_buf.end())
-        {
-            throw std::runtime_error("Requested invalid channel");
-        }
-        return it->second;
-    }
-
 };
 
 } /* namespace GHelpers */

@@ -12,14 +12,6 @@ namespace App
 namespace Frame
 {
 
-Demultiplexor::Demultiplexor(const std::set<Common::Types::ChanId>& channels)
-{
-    for(const auto chan_id : channels)
-    {
-        m_out_buf.try_emplace(chan_id);
-    }
-}
-
 void Demultiplexor::push(const void* data, size_t size)
 {
     if (size == 0) return;
@@ -57,12 +49,15 @@ void Demultiplexor::P_process()
 
         const size_t to_copy = std::min(m_in_buf.size(), m_payload_remaining);
 
-        const auto ch_it = m_out_buf.find(header.channel);
-        if(ch_it != m_out_buf.end())
+        const auto ch_it = m_channels.find(header.channel);
+        if(ch_it != m_channels.end())
         {
             /* store only for existing channels */
-            ch_it->second.push(m_in_buf.data(), to_copy);
+            Common::Channel& channel = *ch_it->second.get();
+            channel.send_to_dbus(m_in_buf.data(), to_copy);
         }
+
+        /* Remove anyway */
         m_in_buf.strip_begin(to_copy);
         m_payload_remaining -= to_copy;
 

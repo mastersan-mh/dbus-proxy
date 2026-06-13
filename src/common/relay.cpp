@@ -11,6 +11,7 @@
 #include "helpers/debug.hpp"
 
 #include <stdexcept>
+#include <memory>
 #include <string.h>
 #include <endian.h>
 
@@ -67,16 +68,10 @@ void relay(
 {
     Epoll::Ctrl epoll(8);
 
-    std::map<DbusFd, Channel> channels;
-
-    std::set<Common::Types::ChanId> channels_id;
-    for(const auto& [dbus_fd, chan_id] : channels_conf)
-    {
-        channels_id.emplace(chan_id);
-    }
+    std::map<DbusFd, std::shared_ptr<Channel>> channels;
 
     Buffer::WriteBuffer wbuf_dbus_to_tcp;
-    Frame::Demultiplexor demultiplexor(channels_id);
+    Frame::Demultiplexor demultiplexor;
 
     Socket::setnonblock(tcp_fd);
     auto& tcp_handler = epoll.handler_create(tcp_fd);
@@ -141,18 +136,13 @@ void relay(
                 case Socket::RecvErr::OK: break;
                 case Socket::RecvErr::AGAIN: return;
                 case Socket::RecvErr::ERROR: throw std::runtime_error("Error during on_tcp_recv on recv");
-                case Socket::RecvErr::END_OF_STREAM: alive = false; return;
+                case Socket::RecvErr::END_OF_STREAM: return;
             }
 
-            demultiplexor.push(buf, buf_size);
-
+            DEBUG_PRINT(cfg, "TCP recv frame: len = %zu", buf_size);
             DEBUG_CALL(cfg, GHelpers::hexprint("TCP -> DBUS: ", buf, buf_size));
 
-            for(auto& [dbus_fd, chan] : channels)
-            {
-                auto& output = demultiplexor.buffer(chan.chan_id());
-                chan.send_to_dbus(cfg, output);
-            }
+            demultiplexor.push(buf, buf_size);
         }
     };
 
@@ -160,7 +150,7 @@ void relay(
         static const size_t buf_capacity = 4096;
         uint8_t buf[buf_capacity];
 
-        const Channel& chan = channels.at(fd);
+        const Channel& chan = *channels.at(fd).get();
 
         while(alive)
         {
@@ -172,12 +162,13 @@ void relay(
                 case Socket::RecvErr::OK: break;
                 case Socket::RecvErr::AGAIN: return;
                 case Socket::RecvErr::ERROR: throw std::runtime_error("Error during on_dbus_recv on recv");
-                case Socket::RecvErr::END_OF_STREAM: alive = false; return;
+                case Socket::RecvErr::END_OF_STREAM: return;
             }
 
+            DEBUG_PRINT(cfg, "DBUS recv frame: len = %zu", buf_size);
             DEBUG_CALL(cfg, GHelpers::hexprint("DBUS -> TCP: ", buf, buf_size));
 
-            Frame::build(cfg, wbuf_dbus_to_tcp, chan.chan_id(), buf, buf_size);
+            Frame::build(wbuf_dbus_to_tcp, chan.chan_id(), buf, buf_size);
 
             const Socket::SendErr send_res =
                     P_try_send_to_tcp(tcp_fd, wbuf_dbus_to_tcp);
@@ -203,12 +194,14 @@ void relay(
         Socket::setnonblock(dbus_fd);
         auto& dbus_handler = epoll.handler_create(dbus_fd);
 
-        channels.try_emplace(
-                dbus_fd,
+        auto channel = std::make_shared<Channel>(
                 dbus_fd,
                 chan_id,
                 dbus_handler
         );
+
+        channels.try_emplace(dbus_fd, channel);
+        demultiplexor.register_channel(channel);
 
         dbus_handler
         .make_ctrl()
@@ -220,6 +213,7 @@ void relay(
         .ctl_add(Epoll::EventType::RDHUP, on_dbus_disconnect)
         .commit();
     }
+
 
     tcp_handler
     .make_ctrl()

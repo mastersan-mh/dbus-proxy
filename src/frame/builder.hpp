@@ -19,7 +19,6 @@ namespace Frame
 
 static inline
 void build(
-        const Config::Storage& cfg,
         Buffer::WriteBuffer& wbuf,
         Common::Types::ChanId chan_id,
         const void * data,
@@ -35,7 +34,6 @@ void build(
             .gap2 = 0,
     };
 
-    DEBUG_PRINT(cfg, "build[raw]: len = %" PRIu32, size);
     wbuf.push(&header, sizeof(header));
     wbuf.push(data, size);
 }

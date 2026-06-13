@@ -11,7 +11,6 @@
 #include "common/ChanId.hpp"
 #include "epoll/Handler.hpp"
 #include "socket/socket.hpp"
-#include "frame/Demultiplexor.hpp"
 #include "config_storage/Storage.hpp"
 #include "utils/class.hpp"
 
@@ -45,14 +44,16 @@ public:
     { return m_dbus_handler; }
 
     void send_to_dbus(
-            const Config::Storage& cfg,
-            Buffer::WriteBuffer& wbuf
+            const void* data,
+            size_t size
     );
 
 private:
     Epoll::Handler& m_dbus_handler;
     const DbusFd m_fd;
     const Common::Types::ChanId m_chan_id;
+
+    Buffer::WriteBuffer m_buffer{};
 
     Socket::SendErr P_try_send_to_dbus(
             Buffer::WriteBuffer& wbuf
