@@ -5,7 +5,7 @@
 #include "config_static/Storage.hpp"
 #include "epoll/Ctrl.hpp"
 #include "frame/builder.hpp"
-#include "frame/Unpacker.hpp"
+#include "frame/Demultiplexor.hpp"
 #include "helpers/hexprinter.hpp"
 #include "socket/socket.hpp"
 #include "helpers/debug.hpp"
@@ -76,7 +76,7 @@ void relay(
     }
 
     Buffer::WriteBuffer wbuf_dbus_to_tcp;
-    Frame::Unpacker unpacker(channels_id);
+    Frame::Demultiplexor demultiplexor(channels_id);
 
     Socket::setnonblock(tcp_fd);
     auto& tcp_handler = epoll.handler_create(tcp_fd);
@@ -144,13 +144,13 @@ void relay(
                 case Socket::RecvErr::END_OF_STREAM: alive = false; return;
             }
 
-            unpacker.push(buf, buf_size);
+            demultiplexor.push(buf, buf_size);
 
             DEBUG_CALL(cfg, GHelpers::hexprint("TCP -> DBUS: ", buf, buf_size));
 
             for(auto& [dbus_fd, chan] : channels)
             {
-                auto& output = unpacker.buffer(chan.chan_id());
+                auto& output = demultiplexor.buffer(chan.chan_id());
                 chan.send_to_dbus(cfg, output);
             }
         }

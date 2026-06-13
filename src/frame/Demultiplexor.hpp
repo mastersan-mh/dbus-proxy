@@ -1,5 +1,5 @@
 /*
- * Unpacker.hpp
+ * Demultiplexor.hpp
  *
  *  Created on: 2 июн. 2026 г.
  *      Author: mastersan
@@ -26,14 +26,17 @@ namespace App
 namespace Frame
 {
 
-class Unpacker
+/**
+ * @brief Demultiplexor
+ */
+class Demultiplexor
 {
 public:
-    CLASS_NO_COPY(Unpacker);
-    CLASS_NO_MOVE(Unpacker);
-    Unpacker() = delete;
+    CLASS_NO_COPY(Demultiplexor);
+    CLASS_NO_MOVE(Demultiplexor);
+    Demultiplexor() = delete;
 
-    Unpacker(const std::set<Common::Types::ChanId>& channels);
+    Demultiplexor(const std::set<Common::Types::ChanId>& channels);
 
     /** @brief Append raw bytes */
     void push(const void* data, size_t size);

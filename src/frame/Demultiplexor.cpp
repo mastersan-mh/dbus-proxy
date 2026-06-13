@@ -1,18 +1,18 @@
 /*
- * Unpacker.cpp
+ * Demultiplexor.cpp
  *
  *  Created on: 2 июн. 2026 г.
  *      Author: mastersan
  */
 
-#include "frame/Unpacker.hpp"
+#include "frame/Demultiplexor.hpp"
 
 namespace App
 {
 namespace Frame
 {
 
-Unpacker::Unpacker(const std::set<Common::Types::ChanId>& channels)
+Demultiplexor::Demultiplexor(const std::set<Common::Types::ChanId>& channels)
 {
     for(const auto chan_id : channels)
     {
@@ -20,14 +20,14 @@ Unpacker::Unpacker(const std::set<Common::Types::ChanId>& channels)
     }
 }
 
-void Unpacker::push(const void* data, size_t size)
+void Demultiplexor::push(const void* data, size_t size)
 {
     if (size == 0) return;
     m_in_buf.push(data, size);
     P_process();
 }
 
-void Unpacker::P_process()
+void Demultiplexor::P_process()
 {
     Header header;
     static const size_t header_size = sizeof(Header);
