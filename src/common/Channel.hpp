@@ -12,6 +12,7 @@
 #include "epoll/Handler.hpp"
 #include "socket/socket.hpp"
 #include "frame/Unpacker.hpp"
+#include "config_storage/Storage.hpp"
 #include "utils/class.hpp"
 
 namespace App
@@ -43,11 +44,8 @@ public:
     Epoll::Handler& dbus_handler() noexcept
     { return m_dbus_handler; }
 
-    Socket::SendErr try_send_to_dbus(
-            Buffer::WriteBuffer& wbuf
-    ) const noexcept;
-
-    void event_send_to_dbus(
+    void send_to_dbus(
+            const Config::Storage& cfg,
             Buffer::WriteBuffer& wbuf
     );
 
@@ -55,6 +53,15 @@ private:
     Epoll::Handler& m_dbus_handler;
     const DbusFd m_fd;
     const Common::Types::ChanId m_chan_id;
+
+    Socket::SendErr P_try_send_to_dbus(
+            Buffer::WriteBuffer& wbuf
+    ) const noexcept;
+
+    void P_event_send_to_dbus(
+            Buffer::WriteBuffer& wbuf
+    );
+
 };
 
 } /* namespace Common */

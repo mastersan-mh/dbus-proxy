@@ -151,28 +151,7 @@ void relay(
             for(auto& [dbus_fd, chan] : channels)
             {
                 auto& output = unpacker.buffer(chan.chan_id());
-                if(!output.empty())
-                {
-                    const Socket::SendErr send_res =
-                            chan.try_send_to_dbus(unpacker.buffer(chan.chan_id()));
-                    switch(send_res)
-                    {
-                        case Socket::SendErr::OK: return;
-                        case Socket::SendErr::AGAIN:
-                        {
-                            auto on_dbus_send = [&cfg, &chan, &output](int){
-                                DEBUG_PRINT(cfg, "on_dbus_send");
-                                chan.event_send_to_dbus(output);
-                            };
-                            chan.dbus_handler()
-                            .make_ctrl()
-                            .ctl_add(Epoll::EventType::OUT, on_dbus_send)
-                            .commit();
-                            break;
-                        }
-                        case Socket::SendErr::ERROR: throw std::runtime_error("Error during on_tcp_recv on send");
-                    }
-                }
+                chan.send_to_dbus(cfg, output);
             }
         }
     };

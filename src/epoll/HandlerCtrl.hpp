@@ -33,14 +33,22 @@ public:
     HandlerCtrl(Handler& handler, Ctrl& ctrl) noexcept;
     ~HandlerCtrl() noexcept = default;
 
-    /** @brief Add event */
+    /** @brief
+     *    Set handler to handle an exception,
+     *    occured in a one of event handlers (<EventHandler>).
+     */
     HandlerCtrl& on_error(ErrorHandler func)
     {
         m_handler.m_error_handler = std::move(func);
         return *this;
     }
 
-    /** @brief Add event */
+    /**
+     * @brief Add event
+     * @note
+     *   If an exception occurs in an event handler (<EventHandler>),
+     *   the error handler (<ErrorHandler>) will be called.
+     */
     HandlerCtrl& ctl_add(EventType event, EventHandler func)
     {
         const uint32_t mask = static_cast<uint32_t>(event);

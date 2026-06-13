@@ -43,7 +43,6 @@ public:
         m_ev.data.u64 = id;
     }
 
-
     ~Handler();
 
     uint64_t id() const noexcept
