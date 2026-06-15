@@ -10,9 +10,9 @@
 #include "logger.hpp"
 #include "config_static/Storage.hpp"
 #include "epoll/Ctrl.hpp"
+#include "socket/socket.hpp"
 #include "helpers/ParseEndpoint.hpp"
 #include "helpers/thread.hpp"
-#include "helpers/socket.hpp"
 #include "helpers/debug.hpp"
 
 #include <sys/wait.h>
@@ -154,7 +154,7 @@ void run(const Config::Storage& cfg)
     {
 
         const int dbus_listen_fd = P_unix_listen(sock_path);
-        GHelpers::Socket::setnonblock(dbus_listen_fd);
+        Socket::setnonblock(dbus_listen_fd);
 
         auto on_accept = [&cfg, id](int fd){
             P_on_accept(cfg, id, fd);

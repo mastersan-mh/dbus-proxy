@@ -1,12 +1,13 @@
 /*
  * WriteBuffer.hpp
  *
- *  Created on: 27 мая 2026 г.
+ *  Created on: 27 may 2026 г.
  *      Author: mastersan
  */
 
-#ifndef SRC_HELPERS_WRITEBUFFER_HPP_
-#define SRC_HELPERS_WRITEBUFFER_HPP_
+#pragma once
+
+#include "utils/class.hpp"
 
 #include <algorithm>
 #include <cstring>
@@ -19,12 +20,16 @@
 
 namespace App
 {
-namespace GHelpers
+namespace Buffer
 {
 
 class WriteBuffer final
 {
 public:
+
+    CLASS_NO_COPY(WriteBuffer);
+    CLASS_NO_MOVE(WriteBuffer);
+
     WriteBuffer() = default;
 
     explicit WriteBuffer(size_t reserve)
@@ -70,7 +75,7 @@ public:
     /**
      * @brief Force compacting
      */
-    void compact();
+    void compact() noexcept;
 
     void push(const void* src_data, size_t data_size);
 
@@ -88,7 +93,7 @@ private:
     std::vector<uint8_t> m_data{};
     size_t m_read_ofs = 0; /**< Offset of logical buffer inside vector */
 };
-} /* namespace GHelpers */
+
+} /* namespace Buffer */
 } /* namespace App */
 
-#endif /* SRC_HELPERS_WRITEBUFFER_HPP_ */

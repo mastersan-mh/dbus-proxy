@@ -1,15 +1,15 @@
 /*
  * WriteBuffer.hpp
  *
- *  Created on: 27 мая 2026 г.
+ *  Created on: 27 may 2026 г.
  *      Author: mastersan
  */
 
-#include "helpers/WriteBuffer.hpp"
+#include "buffer/WriteBuffer.hpp"
 
 namespace App
 {
-namespace GHelpers
+namespace Buffer
 {
 
 void WriteBuffer::strip_begin(size_t n)
@@ -32,7 +32,7 @@ void WriteBuffer::strip_begin(size_t n)
     }
 }
 
-void WriteBuffer::compact()
+void WriteBuffer::compact() noexcept
 {
     if (m_read_ofs == 0)
     {
@@ -65,6 +65,6 @@ void WriteBuffer::push(const void* src_data, size_t data_size)
     m_data.insert(m_data.end(), ptr, ptr + data_size);
 }
 
-} /* namespace GHelpers */
+} /* namespace Buffer */
 } /* namespace App */
 

@@ -8,7 +8,7 @@
 #pragma once
 
 #include "helpers/debug.hpp"
-#include "helpers/WriteBuffer.hpp"
+#include "buffer/WriteBuffer.hpp"
 #include "frame/Header.hpp"
 #include "logger.hpp"
 
@@ -19,8 +19,7 @@ namespace Frame
 
 static inline
 void build(
-        const Config::Storage& cfg,
-        GHelpers::WriteBuffer& wbuf,
+        Buffer::WriteBuffer& wbuf,
         Common::Types::ChanId chan_id,
         const void * data,
         uint32_t size
@@ -35,7 +34,6 @@ void build(
             .gap2 = 0,
     };
 
-    DEBUG_PRINT(cfg, "build[raw]: len = %" PRIu32, size);
     wbuf.push(&header, sizeof(header));
     wbuf.push(data, size);
 }

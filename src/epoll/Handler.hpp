@@ -8,9 +8,10 @@
 #ifndef SRC_HELPERS_EPOLL_HANDLER_HPP_
 #define SRC_HELPERS_EPOLL_HANDLER_HPP_
 
+#include "epoll/EventType.hpp"
+#include "epoll/types.hpp"
 #include "utils/class.hpp"
 
-#include <functional>
 #include <sys/epoll.h>
 
 namespace App
@@ -30,8 +31,6 @@ public:
     CLASS_NO_COPY(Handler);
     CLASS_NO_MOVE(Handler);
 
-    using Func = std::function<void(int fd)>;
-
     Handler() = delete;
     Handler(
             Ctrl& ctrl,
@@ -43,7 +42,6 @@ public:
     {
         m_ev.data.u64 = id;
     }
-
 
     ~Handler();
 
@@ -57,10 +55,13 @@ public:
 
 private:
 
+    static constexpr size_t FUNCS_NUM = 6;
+
     Ctrl& m_ctrl;
     int m_fd;
     struct epoll_event m_ev{};
-    std::array<Func, 6> m_funcs{};
+    std::array<EventHandler, FUNCS_NUM> m_funcs{};
+    ErrorHandler m_error_handler{};
 };
 
 } /* namespace Epoll */

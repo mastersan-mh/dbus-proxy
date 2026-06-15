@@ -5,19 +5,19 @@
  *      Author: mastersan
  */
 
-#ifndef SRC_CONFIG_STATIC_STORAGE_HPP_
-#define SRC_CONFIG_STATIC_STORAGE_HPP_
+#pragma once
 
 #include <stddef.h>
 
 namespace App
 {
-namespace StaticConfig
+namespace Config
+{
+namespace Static
 {
 
-static constexpr size_t MAX_FRAME = 16 * 1024 * 1024;
 
-} /* namespace StaticConfig */
+} /* namespace Static */
+} /* namespace Config */
 } /* namespace App */
 
-#endif /* SRC_CONFIG_STATIC_STORAGE_HPP_ */

@@ -75,7 +75,7 @@ void run(const Config::Storage& cfg)
     Epoll::Ctrl ctrl(64);
 
     const int listen_fd = P_tcp_listen(cfg.addr, cfg.port);
-    APPLOG_DEBUG("Listening on %s:%" PRIu16, cfg.addr.c_str(), cfg.port);
+    DEBUG_PRINT(cfg, "Listening on %s:%" PRIu16, cfg.addr.c_str(), cfg.port);
 
     while (true)
     {
@@ -118,6 +118,8 @@ void run(const Config::Storage& cfg)
 
             shutdown(tcp_fd, SHUT_RDWR);
             close(tcp_fd);
+
+            DEBUG_PRINT(cfg, "Connection closed");
 
             exit(0);
         }

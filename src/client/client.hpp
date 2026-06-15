@@ -1,14 +1,13 @@
 /*
- * client.h
+ * client.hpp
  *
- *  Created on: 18 мая 2026 г.
+ *  Created on: 18 may 2026 г.
  *      Author: mastersan
  */
 
-#ifndef SRC_CLIENT_CLIENT_HPP_
-#define SRC_CLIENT_CLIENT_HPP_
+#pragma once
 
-#include "config_commandline/Storage.hpp"
+#include "config_storage/Storage.hpp"
 
 namespace App
 {
@@ -19,5 +18,3 @@ void run(const Config::Storage& cfg);
 
 } /* namespace Client */
 } /* namespace App */
-
-#endif /* SRC_CLIENT_CLIENT_HPP_ */

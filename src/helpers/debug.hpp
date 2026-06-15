@@ -5,10 +5,9 @@
  *      Author: mastersan
  */
 
-#ifndef SRC_HELPERS_DEBUG_HPP_
-#define SRC_HELPERS_DEBUG_HPP_
+#pragma once
 
-#include "config_commandline/Storage.hpp"
+#include "config_storage/Storage.hpp"
 #include "logger.hpp"
 
 #include <functional>
@@ -40,5 +39,3 @@ void debug_call(
 
 } /* namespace GHelpers */
 } /* namespace App */
-
-#endif /* SRC_HELPERS_DEBUG_HPP_ */

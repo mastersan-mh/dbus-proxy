@@ -7,7 +7,6 @@
 
 #include "epoll/Ctrl.hpp"
 #include "epoll/Handler.hpp"
-#include "logger.hpp"
 
 #include <stdexcept>
 
@@ -15,6 +14,21 @@ namespace App
 {
 namespace Epoll
 {
+
+static
+EventType P_index_to_event_type_to_index(size_t index) noexcept
+{
+    switch(index)
+    {
+        case 0: return EventType::IN   ;
+        case 1: return EventType::OUT  ;
+        case 2: return EventType::RDHUP;
+        case 3: return EventType::PRI  ;
+        case 4: return EventType::ERR  ;
+        case 5: return EventType::HUP  ;
+    }
+    return EventType::IN;
+}
 
 Ctrl::Ctrl(size_t max_events)
 : m_conf_max_events(max_events)
@@ -66,7 +80,7 @@ void Ctrl::wait()
             Handler& handler = it->second;
             const uint32_t triggered = event->events;
 
-            for(int ihandler = 0; ihandler < 32; ++ihandler)
+            for(size_t ihandler = 0; ihandler < Handler::FUNCS_NUM; ++ihandler)
             {
                 auto& func = handler.m_funcs[ihandler];
                 if(
@@ -78,12 +92,24 @@ void Ctrl::wait()
                     {
                         func(handler.m_fd);
                     }
-                    catch (const std::exception& e)
+                    catch(...)
                     {
-                        APPLOG_ERROR("Epoll: Handler exception on fd %d: %s",
-                                handler.m_fd,
-                                e.what()
-                        );
+                        if(handler.m_error_handler)
+                        {
+                            try
+                            {
+                                std::exception_ptr eptr = std::current_exception();
+                                handler.m_error_handler(
+                                        handler.m_fd,
+                                        P_index_to_event_type_to_index(ihandler),
+                                        eptr
+                                );
+                            }
+                            catch(...)
+                            {
+                                /* Ignore all errors */
+                            }
+                        }
                     }
                 }
             }
