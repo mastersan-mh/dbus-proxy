@@ -118,13 +118,13 @@ void P_on_accept(
             {
                 const std::map<Common::DbusFd, Common::Types::ChanId> channels = {{dbus_fd, chan_id}};
 
-                DEBUG_PRINT(cfg,"Accepted on %" PRIu8 ":%s",
+                DEBUG_PRINT(cfg, 1, "Accepted on %" PRIu8 ":%s",
                         chan_id,
                         bus_path.c_str()
                 );
 
                 const int tcp_fd = P_tcp_connect(cfg.addr, cfg.port);
-                DEBUG_PRINT(cfg, "Connected to %s:%" PRIu16, cfg.addr.c_str(), cfg.port);
+                DEBUG_PRINT(cfg, 1, "Connected to %s:%" PRIu16, cfg.addr.c_str(), cfg.port);
 
                 Common::relay(cfg, channels, tcp_fd);
 
@@ -138,7 +138,7 @@ void P_on_accept(
 
             close(dbus_fd);
 
-            DEBUG_PRINT(cfg, "Channel stopped");
+            DEBUG_PRINT(cfg, 1, "Channel stopped");
             _exit(0);
         }
     }

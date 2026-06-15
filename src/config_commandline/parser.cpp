@@ -31,6 +31,8 @@ void P_print_usage(const char* prog)
             "Usage: %s --mode [server|client] [options]\n"
             "Options:\n"
             "      --help               Show this help\n"
+            "      --debug[=N]          Debug level\n"
+            "                           Default: 1\n"
             "      --mode MODE          'server' or 'client'\n"
             "      --addr ADDR          Address\n"
             "                           Server: IP address to listen.\n"
@@ -142,7 +144,7 @@ Storage parse_args(int argc, char* argv[])
     static struct option long_options[] =
     {
             {"help"         , no_argument      , &opt_flag, OPTION_VAL__HELP},
-            {"debug"        , no_argument      , &opt_flag, OPTION_VAL__DEBUG},
+            {"debug"        , optional_argument, &opt_flag, OPTION_VAL__DEBUG},
             {"mode"         , required_argument, &opt_flag, OPTION_VAL__MODE},
             {"addr"         , required_argument, &opt_flag, OPTION_VAL__ADDR},
             {"port"         , required_argument, &opt_flag, OPTION_VAL__PORT},
@@ -167,7 +169,22 @@ Storage parse_args(int argc, char* argv[])
                     }
                     case OPTION_VAL__DEBUG:
                     {
-                        cfg.debug = true;
+                        if(optarg == nullptr)
+                        {
+                            cfg.debug = 1;
+                        }
+                        else
+                        {
+                            const uint64_t debug_level = Utils::String::str_to_u64(optarg);
+                            if(
+                                    debug_level < 1 ||
+                                    debug_level > std::numeric_limits<decltype(cfg.debug)>::max()
+                            )
+                            {
+                                throw std::overflow_error("Bad debug level");
+                            }
+                            cfg.debug = debug_level;
+                        }
                         break;
                     }
                     case OPTION_VAL__MODE:
@@ -197,7 +214,7 @@ Storage parse_args(int argc, char* argv[])
                     {
                         try
                         {
-                            uint64_t port = Utils::String::str_to_u64(optarg);
+                            const uint64_t port = Utils::String::str_to_u64(optarg);
                             if(port > 0xffff)
                             {
                                 throw std::overflow_error("Port value overflow");

@@ -75,7 +75,7 @@ void run(const Config::Storage& cfg)
     Epoll::Ctrl ctrl(64);
 
     const int listen_fd = P_tcp_listen(cfg.addr, cfg.port);
-    DEBUG_PRINT(cfg, "Listening on %s:%" PRIu16, cfg.addr.c_str(), cfg.port);
+    DEBUG_PRINT(cfg, 1, "Listening on %s:%" PRIu16, cfg.addr.c_str(), cfg.port);
 
     while (true)
     {
@@ -84,6 +84,9 @@ void run(const Config::Storage& cfg)
         {
             continue;
         }
+
+        DEBUG_PRINT(cfg, 1, "Connection accepted");
+
         const pid_t proc_instance = fork();
         if(proc_instance != 0)
         {
@@ -119,7 +122,7 @@ void run(const Config::Storage& cfg)
             shutdown(tcp_fd, SHUT_RDWR);
             close(tcp_fd);
 
-            DEBUG_PRINT(cfg, "Connection closed");
+            DEBUG_PRINT(cfg, 1, "Connection closed");
 
             exit(0);
         }
